@@ -16,6 +16,11 @@ The glass comes from Kyant0/AndroidLiquidGlass (io.github.kyant0:backdrop). `gla
 Apache-2.0 licence (third_party/). `ui/AuraApp.kt` shows the pattern: one `layerBackdrop` box holds the scene and the page,
 and glass pieces float above it and refract it. Lens refraction needs Android 13, blur needs Android 12.
 
+## Build on GitHub (no PC needed)
+`.github/workflows/build.yml` builds on every push to main and on "Run workflow". The APK lands on the repo's Releases page
+as `app-debug.apk`, and a log of the build is pushed to the `build-logs` branch. Debug builds use the fixed key in
+`app/debug.keystore` (the standard public "android" credentials), so each build installs over the last one.
+
 ## Build
 Needs JDK 17+ and the Android SDK (platform 37, build-tools 37.0.0). Set `sdk.dir` in `local.properties`.
 

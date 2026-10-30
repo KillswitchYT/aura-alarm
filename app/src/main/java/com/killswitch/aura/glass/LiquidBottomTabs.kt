@@ -69,7 +69,7 @@ fun LiquidBottomTabs(
     val isLightTheme = false
     val accentColor =
         if (isLightTheme) Color(0xFF0088FF)
-        else Color(0xFFBBC3FF)
+        else Color(0xFFE6E8EF)
     val containerColor =
         if (isLightTheme) Color(0xFFFAFAFA).copy(0.4f)
         else Color(0xFF121212).copy(0.4f)

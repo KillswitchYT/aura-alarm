@@ -64,15 +64,13 @@ private fun DrawScope.drawPulses(p: Float) {
     for (k in 0..2) {
         val q = (p + k / 3f) % 1f
         drawCircle(
-            Aura.Peach.copy(alpha = .55f * (1f - q)),
+            Aura.Accent.copy(alpha = .55f * (1f - q)),
             radius = size.minDimension * (.12f + .95f * q),
             center = Offset(size.width / 2f, size.height * .86f),
             style = Stroke(3.dp.toPx()),
         )
     }
 }
-
-private fun centered(s: TextStyle) = s.copy(textAlign = TextAlign.Center)
 
 /**
  * The full-screen alarm. [challenge] 0 shows Dismiss, 1 asks three sums, 2 waits for [shakes] to reach [shakeGoal]
@@ -117,7 +115,7 @@ fun RingScreen(
             BasicText(fmtTime(h, cal.get(Calendar.MINUTE), is24), style = ts(88f, weight = FontWeight.Bold, tracking = -3f))
             if (!is24) BasicText(ampm(h), style = ts(20f, Aura.Muted, FontWeight.Bold))
             Spacer(Modifier.height(4.dp))
-            BasicText(label, style = centered(ts(26f, Aura.Peach, FontWeight.Bold)))
+            BasicText(label, style = centered(ts(20f, Aura.Muted, FontWeight.Bold)))
 
             if (math != null) {
                 Spacer(Modifier.height(20.dp))
@@ -129,7 +127,7 @@ fun RingScreen(
                 ) {
                     BasicTextField(
                         input, { input = it.filter { c -> c.isDigit() }.take(4); wrong = false }, Modifier.fillMaxWidth(), singleLine = true,
-                        textStyle = centered(ts(26f, weight = FontWeight.Bold)), cursorBrush = SolidColor(Aura.Periwinkle),
+                        textStyle = centered(ts(26f, weight = FontWeight.Bold)), cursorBrush = SolidColor(Aura.Accent),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { submit() }),
                     )
@@ -144,7 +142,7 @@ fun RingScreen(
                 Box(Modifier.width(220.dp).height(10.dp).clip(Capsule()).background(Color.White.copy(alpha = .12f))) {
                     Box(
                         Modifier.fillMaxWidth((shakes.toFloat() / shakeGoal).coerceIn(0f, 1f)).height(10.dp).clip(Capsule())
-                            .background(Brush.horizontalGradient(listOf(Aura.Periwinkle, Aura.Peach))),
+                            .background(Aura.Accent),
                     )
                 }
             }
@@ -156,11 +154,11 @@ fun RingScreen(
         ) {
             if (canSnooze) LiquidButton(onSnooze, backdrop, Modifier.weight(1f)) { BasicText(snoozeText, style = ts(17f, weight = FontWeight.Bold)) }
             when (challenge) {
-                0 -> LiquidButton(onDismiss, backdrop, Modifier.weight(1f), tint = Aura.Periwinkle) {
-                    BasicText("Dismiss", style = ts(18f, Aura.Ink, FontWeight.ExtraBold))
+                0 -> LiquidButton(onDismiss, backdrop, Modifier.weight(1f), tint = Aura.Accent) {
+                    BasicText("Dismiss", style = ts(18f, Aura.OnAccent, FontWeight.ExtraBold))
                 }
-                1 -> LiquidButton({ submit() }, backdrop, Modifier.weight(1f), tint = Aura.Periwinkle) {
-                    BasicText("Check", style = ts(18f, Aura.Ink, FontWeight.ExtraBold))
+                1 -> LiquidButton({ submit() }, backdrop, Modifier.weight(1f), tint = Aura.Accent) {
+                    BasicText("Check", style = ts(18f, Aura.OnAccent, FontWeight.ExtraBold))
                 }
             }
         }

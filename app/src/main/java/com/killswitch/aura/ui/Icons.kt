@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -13,7 +14,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 
-enum class Ic { Alarm, World, Timer, Stopwatch, Setup, Plus }
+enum class Ic { Alarm, World, Timer, Stopwatch, Setup, Plus, Chevron, Trash, Play, Alert, Search }
 
 /** Tiny stroke icons drawn on a canvas, so the app needs no icon library. */
 @Composable
@@ -53,6 +54,21 @@ fun Icon(kind: Ic, color: Color, modifier: Modifier = Modifier.size(24.dp)) {
                 for (i in 0..2) drawCircle(color, s * .075f, Offset(xs[i] * s, (.25f + .25f * i) * s))
             }
             Ic.Plus -> { line(.5f, .2f, .5f, .8f); line(.2f, .5f, .8f, .5f) }
+            Ic.Chevron -> { line(.38f, .2f, .66f, .5f); line(.66f, .5f, .38f, .8f) }
+            Ic.Trash -> {
+                drawRoundRect(color, Offset(s * .28f, s * .34f), Size(s * .44f, s * .50f), CornerRadius(s * .06f), style = st)
+                line(.18f, .26f, .82f, .26f); line(.42f, .15f, .58f, .15f)
+            }
+            Ic.Play -> {
+                val p = Path().apply { moveTo(s * .34f, s * .2f); lineTo(s * .76f, s * .5f); lineTo(s * .34f, s * .8f); close() }
+                drawPath(p, color, style = st)
+            }
+            Ic.Alert -> {
+                val p = Path().apply { moveTo(s * .5f, s * .14f); lineTo(s * .9f, s * .84f); lineTo(s * .1f, s * .84f); close() }
+                drawPath(p, color, style = st)
+                line(.5f, .42f, .5f, .62f); drawCircle(color, s * .04f, Offset(s * .5f, s * .74f))
+            }
+            Ic.Search -> { drawCircle(color, s * .26f, Offset(s * .44f, s * .44f), style = st); line(.64f, .64f, .86f, .86f) }
         }
     }
 }

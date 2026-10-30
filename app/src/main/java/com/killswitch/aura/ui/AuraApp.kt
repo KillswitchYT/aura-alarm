@@ -1,6 +1,9 @@
 package com.killswitch.aura.ui
 
 import androidx.activity.ComponentActivity
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,7 +53,9 @@ import com.killswitch.aura.glass.LiquidBottomTabs
 import com.killswitch.aura.glass.LiquidButton
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 private const val NONE = -2
 private const val NEW = -1
@@ -66,19 +72,26 @@ fun AuraApp(reload: Int, startTab: Int) {
     val ctx = LocalContext.current
     val activity = ctx as ComponentActivity
     var tab by rememberSaveable { mutableIntStateOf(startTab) }
-    var alarms by remember { mutableStateOf(Store.alarms(ctx)) }
+    var state by remember { mutableStateOf<AlarmsState>(AlarmsState.Loading) }
+    var loadKey by remember { mutableIntStateOf(0) }
     var checks by remember { mutableStateOf(Perms.check(ctx)) }
     var editing by remember { mutableIntStateOf(NONE) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val seen = remember { mutableSetOf<Any>() }
     val is24 = Settings.is24(ctx)
     val backdrop = rememberLayerBackdrop()
+    val alarms = (state as? AlarmsState.Ready)?.list.orEmpty()
 
     LaunchedEffect(startTab) { tab = startTab }
-    LaunchedEffect(reload) { alarms = Store.alarms(ctx) }
+    // Real async read: the skeleton shows only if storage is slow, errors show only if the data is damaged.
+    LaunchedEffect(reload, loadKey) {
+        val r = withContext(Dispatchers.IO) { Store.tryAlarms(ctx) }
+        state = if (r == null) AlarmsState.Failed else AlarmsState.Ready(r)
+    }
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(1000L - now % 1000) } }
     DisposableEffect(activity) {
         val obs = LifecycleEventObserver { _, e ->
-            if (e == Lifecycle.Event.ON_RESUME) { alarms = Store.alarms(ctx); checks = Perms.check(ctx) }
+            if (e == Lifecycle.Event.ON_RESUME) { loadKey++; checks = Perms.check(ctx) }
         }
         activity.lifecycle.addObserver(obs)
         onDispose { activity.lifecycle.removeObserver(obs) }
@@ -86,28 +99,54 @@ fun AuraApp(reload: Int, startTab: Int) {
 
     fun save(list: List<Alarm>) {
         val sorted = list.sortedBy { it.time }
-        alarms = sorted
+        state = AlarmsState.Ready(sorted)
         Store.saveAlarms(ctx, sorted)
         Scheduler.scheduleAll(ctx)
+    }
+
+    // Tab change: the old page slides and fades out while the new one slides and fades in, 280 ms, in the direction of travel.
+    var shown by remember { mutableIntStateOf(tab) }
+    var leaving by remember { mutableIntStateOf(-1) }
+    var dir by remember { mutableIntStateOf(1) }
+    val slide = remember { Animatable(1f) }
+    LaunchedEffect(tab) {
+        if (tab != shown) {
+            dir = if (tab > shown) 1 else -1
+            leaving = shown
+            shown = tab
+            slide.snapTo(0f)
+            slide.animateTo(1f, tween(280, easing = FastOutSlowInEasing))
+            leaving = -1
+        }
     }
 
     val bars = WindowInsets.systemBars.asPaddingValues()
     val pad = PaddingValues(16.dp, bars.calculateTopPadding() + 12.dp, 16.dp, bars.calculateBottomPadding() + 190.dp)
 
+    val page: @Composable (Int) -> Unit = { i ->
+        when (i) {
+            0 -> HomeTab(
+                state, now, is24, checks.count { it.ok }, checks.size, pad, seen,
+                onProtection = { tab = 4 },
+                onToggle = { idx, on -> save(alarms.toMutableList().also { l -> l[idx] = l[idx].copy(on = on, skip = 0) }) },
+                onOpen = { editing = it },
+                onAdd = { editing = NEW },
+                onRetry = { state = AlarmsState.Loading; loadKey++ },
+                onReset = { Store.set(ctx, "al", "[]"); Scheduler.scheduleAll(ctx); loadKey++ },
+            )
+            4 -> SetupTab(checks, pad, { Perms.fix(activity, it); checks = Perms.check(ctx) }, { Perms.runFix(activity, it); checks = Perms.check(ctx) })
+            else -> NextUp(TABS[i].label, pad)
+        }
+    }
+
     Box(Modifier.fillMaxSize()) {
         // Everything inside this box is what the glass refracts.
         Box(Modifier.layerBackdrop(backdrop).fillMaxSize()) {
             Canvas(Modifier.fillMaxSize()) { drawAuraScene() }
-            when (tab) {
-                0 -> HomeTab(
-                    alarms, now, is24, checks.count { it.ok }, checks.size, pad,
-                    onProtection = { tab = 4 },
-                    onToggle = { i, on -> save(alarms.toMutableList().also { l -> l[i] = l[i].copy(on = on, skip = 0) }) },
-                    onOpen = { editing = it },
-                )
-                4 -> SetupTab(checks, pad, { Perms.fix(activity, it); checks = Perms.check(ctx) }, { Perms.runFix(activity, it); checks = Perms.check(ctx) })
-                else -> NextUp(TABS[tab].label, pad)
+            if (leaving >= 0) {
+                Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - slide.value; translationX = -dir * slide.value * size.width * .10f }) { page(leaving) }
             }
+            Box(Modifier.fillMaxSize().graphicsLayer { alpha = slide.value; translationX = dir * (1f - slide.value) * size.width * .10f }) { page(shown) }
         }
 
         LiquidBottomTabs(
@@ -116,20 +155,21 @@ fun AuraApp(reload: Int, startTab: Int) {
         ) {
             TABS.forEachIndexed { i, t ->
                 LiquidBottomTab({ tab = i }) {
-                    Icon(t.icon, if (tab == i) Aura.Periwinkle else Aura.Muted, Modifier.size(24.dp))
+                    Icon(t.icon, if (tab == i) Aura.Text else Aura.Muted, Modifier.size(24.dp))
                     BasicText(t.label, style = ts(11f, if (tab == i) Aura.Text else Aura.Muted, FontWeight.Bold))
                 }
             }
         }
 
-        if (tab == 0 && editing == NONE) {
+        // The empty screen has its own button, so the floating one only appears once there is something to add to.
+        if (tab == 0 && editing == NONE && alarms.isNotEmpty()) {
             LiquidButton(
                 { editing = NEW }, backdrop,
                 Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 20.dp, bottom = 100.dp),
-                tint = Aura.Periwinkle,
+                tint = Aura.Accent,
             ) {
-                Icon(Ic.Plus, Aura.Ink, Modifier.size(22.dp))
-                BasicText("New alarm", style = ts(16f, Aura.Ink, FontWeight.ExtraBold))
+                Icon(Ic.Plus, Aura.OnAccent, Modifier.size(22.dp))
+                BasicText("New alarm", style = ts(16f, Aura.OnAccent, FontWeight.ExtraBold))
             }
         }
 
@@ -176,7 +216,7 @@ private fun SetupTab(checks: List<Check>, pad: PaddingValues, onFix: (Int) -> Un
                     BasicText(iv.value.hint, style = ts(13f, Aura.Muted))
                 }
                 if (iv.value.ok) BasicText("On", style = ts(15f, Aura.Mint, FontWeight.Bold))
-                else Box(Modifier.pressable { onFix(iv.index) }.padding(8.dp)) { BasicText("Fix", style = ts(15f, Aura.Peach, FontWeight.ExtraBold)) }
+                else Box(Modifier.pressable { onFix(iv.index) }.padding(8.dp)) { BasicText("Fix", style = ts(15f, Aura.Accent, FontWeight.ExtraBold)) }
             }
         }
         item { BasicText("Fixes", Modifier.padding(start = 4.dp, top = 8.dp), style = ts(13f, Aura.Muted, FontWeight.Bold)) }

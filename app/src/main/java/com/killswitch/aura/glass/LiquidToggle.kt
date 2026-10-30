@@ -55,7 +55,7 @@ fun LiquidToggle(
     val isLightTheme = false
     val accentColor =
         if (isLightTheme) Color(0xFF34C759)
-        else Color(0xFFBBC3FF)
+        else Color(0xFFFFB07A)
     val trackColor =
         if (isLightTheme) Color(0xFF787878).copy(0.2f)
         else Color(0xFF787880).copy(0.36f)

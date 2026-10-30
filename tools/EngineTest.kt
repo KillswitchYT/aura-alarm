@@ -45,6 +45,13 @@ fun main() {
     check("garbage day values are dropped", Alarm.from(JSONObject("""{"t":"07:00","d":[1,9,-3,"x"]}""")).days == setOf(1))
     check("missing fields fall back to defaults", Alarm.from(JSONObject("""{"t":"07:00"}""")).let { it.vibrate && it.snooze == 5 && !it.on && it.challenge == 0 })
 
+    section("alarm storage: damaged data vs no alarms")
+    val stored = org.json.JSONArray().also { j -> listOf(a, Alarm(time = "22:15")).forEach { x -> j.put(x.toJson()) } }.toString()
+    check("saved list parses back", Store.parseAlarms(stored) == listOf(a, Alarm(time = "22:15")))
+    check("missing, empty and blank mean no alarms", Store.parseAlarms("") == emptyList<Alarm>() && Store.parseAlarms("[]") == emptyList<Alarm>() && Store.parseAlarms("   ") == emptyList<Alarm>())
+    check("garbage is reported as damaged", Store.parseAlarms("not json") == null && Store.parseAlarms("{\"a\":1}") == null && Store.parseAlarms("[1,2]") == null && Store.parseAlarms("[{\"t\":\"07:00\"},5]") == null)
+    check("a minimal old-style entry still loads", Store.parseAlarms("""[{"t":"07:00"}]""")!!.size == 1)
+
     section("settings and bedtime")
     check("quoted setting from web build", Settings.unquote("\"24\"") == "24" && Settings.unquote("24") == "24" && Settings.unquote("") == "")
     check("volume: snooze mode", Settings.volumeAction("snooze", false) == VolAction.SNOOZE && Settings.volumeAction("snooze", true) == VolAction.SNOOZE)

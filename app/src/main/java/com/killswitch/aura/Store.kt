@@ -19,6 +19,14 @@ object Store {
         (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { Alarm.from(it) } }
     } catch (e: Exception) { emptyList() }
 
+    /** Strict parse: null means the saved data is damaged. A missing or empty value is a normal empty list. */
+    fun parseAlarms(json: String): List<Alarm>? = try {
+        val a = JSONArray(json.ifBlank { "[]" })
+        (0 until a.length()).map { Alarm.from(a.getJSONObject(it)) }
+    } catch (e: Exception) { null }
+
+    fun tryAlarms(c: Context): List<Alarm>? = parseAlarms(get(c, "al"))
+
     fun saveAlarms(c: Context, list: List<Alarm>) {
         val a = JSONArray()
         list.forEach { a.put(it.toJson()) }

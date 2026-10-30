@@ -1,6 +1,13 @@
 package com.killswitch.aura.ui
 
 import android.app.TimePickerDialog
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.launch
 import android.content.Intent
 import android.media.RingtoneManager
 import android.net.Uri
@@ -62,18 +69,18 @@ private fun Section(text: String) = BasicText(text, style = ts(13f, Aura.Muted, 
 private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.pressable(onClick).clip(Capsule())
-            .background(if (selected) Aura.Container else Color.White.copy(alpha = .08f))
+            .background(if (selected) Aura.Selected else Color.White.copy(alpha = .08f))
             .padding(horizontal = 14.dp, vertical = 9.dp),
-    ) { BasicText(text, style = ts(14f, if (selected) Aura.OnContainer else Aura.Text, FontWeight.Bold)) }
+    ) { BasicText(text, style = ts(14f, if (selected) Aura.Text else Aura.Text, FontWeight.Bold)) }
 }
 
 @Composable
 private fun DayDot(letter: String, on: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.size(38.dp).pressable(onClick).clip(CircleShape)
-            .background(if (on) Aura.Container else Color.White.copy(alpha = .08f)),
+            .background(if (on) Aura.Selected else Color.White.copy(alpha = .08f)),
         contentAlignment = Alignment.Center,
-    ) { BasicText(letter, style = ts(14f, if (on) Aura.OnContainer else Aura.Muted, FontWeight.Bold)) }
+    ) { BasicText(letter, style = ts(14f, if (on) Aura.Text else Aura.Muted, FontWeight.Bold)) }
 }
 
 @Composable
@@ -103,6 +110,12 @@ fun Editor(
     var skipping by remember { mutableStateOf(start.skip > System.currentTimeMillis()) }
     val flat = rememberCanvasBackdrop { drawRect(Aura.Sheet) }
 
+    // Slides up in 280 ms and back down in 200 ms, with the scrim fading alongside.
+    val enter = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { enter.animateTo(1f, tween(280, easing = FastOutSlowInEasing)) }
+    fun leave(then: () -> Unit) { scope.launch { enter.animateTo(0f, tween(200, easing = FastOutSlowInEasing)); then() } }
+
     val pickSound = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         @Suppress("DEPRECATION")
         val u = r.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
@@ -130,11 +143,12 @@ fun Editor(
 
     Box(Modifier.fillMaxSize()) {
         Box(
-            Modifier.fillMaxSize().background(Color.Black.copy(alpha = .55f))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onClose() },
+            Modifier.fillMaxSize().graphicsLayer { alpha = enter.value }.background(Color.Black.copy(alpha = .55f))
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { leave(onClose) },
         )
         Column(
             Modifier.align(Alignment.BottomCenter).statusBarsPadding().navigationBarsPadding().imePadding().padding(12.dp)
+                .graphicsLayer { translationY = (1f - enter.value) * 56.dp.toPx() }
                 .drawBackdrop(
                     backdrop = backdrop,
                     shape = { RoundedRectangle(32f.dp) },
@@ -149,7 +163,7 @@ fun Editor(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BasicText(if (isNew) "New alarm" else "Edit alarm", Modifier.weight(1f), style = ts(20f, weight = FontWeight.ExtraBold))
                 Row(Modifier.pressable { pickTime() }.clip(Capsule()).background(Color.White.copy(alpha = .10f)).padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.Bottom) {
-                    BasicText(fmtTime(h, time.substringAfter(':').toInt(), is24), style = ts(34f, Aura.Periwinkle, FontWeight.ExtraBold, -1f))
+                    BasicText(fmtTime(h, time.substringAfter(':').toInt(), is24), style = ts(34f, Aura.Accent, FontWeight.ExtraBold, -1f))
                     if (!is24) BasicText(" " + ampm(h), Modifier.padding(bottom = 5.dp), style = ts(14f, Aura.Muted, FontWeight.Bold))
                 }
             }
@@ -157,7 +171,7 @@ fun Editor(
             Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .07f)).padding(horizontal = 16.dp, vertical = 13.dp)) {
                 BasicTextField(
                     label, { label = it }, Modifier.fillMaxWidth(), singleLine = true, textStyle = ts(16f),
-                    cursorBrush = SolidColor(Aura.Periwinkle),
+                    cursorBrush = SolidColor(Aura.Accent),
                     decorationBox = { inner -> if (label.isEmpty()) BasicText("Label (optional)", style = ts(16f, Aura.Muted)); inner() },
                 )
             }
@@ -200,10 +214,16 @@ fun Editor(
             if (!isNew && days.isNotEmpty()) Chip("Skip the next ring", skipping) { skipping = !skipping }
 
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (!isNew) Box(Modifier.pressable(onDelete).padding(8.dp)) { BasicText("Delete", style = ts(15f, Aura.Rose, FontWeight.Bold)) }
+                if (!isNew) Row(Modifier.pressable { leave(onDelete) }.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Ic.Trash, Aura.Rose, Modifier.size(18.dp))
+                    BasicText("Delete", style = ts(15f, Aura.Rose, FontWeight.Bold))
+                }
                 Spacer(Modifier.weight(1f))
-                LiquidButton({ onTest(build()) }, flat) { BasicText("Test", style = ts(16f, weight = FontWeight.Bold)) }
-                LiquidButton({ onSave(build()) }, flat, tint = Aura.Periwinkle) { BasicText("Save", style = ts(16f, Aura.Ink, FontWeight.ExtraBold)) }
+                LiquidButton({ onTest(build()) }, flat) {
+                    Icon(Ic.Play, Aura.Text, Modifier.size(18.dp))
+                    BasicText("Test", style = ts(16f, weight = FontWeight.Bold))
+                }
+                LiquidButton({ leave { onSave(build()) } }, flat, tint = Aura.Accent) { BasicText("Save", style = ts(16f, Aura.OnAccent, FontWeight.ExtraBold)) }
             }
         }
     }
