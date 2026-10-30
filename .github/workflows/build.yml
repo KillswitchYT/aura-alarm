@@ -1,0 +1,81 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+
+      # Works whether the repo holds the project itself or just AuraAlarm-native-source.zip.
+      - name: Find the project
+        id: p
+        run: |
+          if [ ! -f gradlew ]; then
+            z=$(ls ./*.zip 2>/dev/null | head -1 || true)
+            if [ -n "$z" ]; then unzip -q "$z"; fi
+          fi
+          g=$(find . -maxdepth 3 -name gradlew | head -1)
+          echo "gradlew found at: $g"
+          echo "dir=$(dirname "$g")" >> "$GITHUB_OUTPUT"
+
+      - name: Build debug APK
+        working-directory: ${{ steps.p.outputs.dir }}
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+
+      - name: Show errors on the run page
+        if: always()
+        working-directory: ${{ steps.p.outputs.dir }}
+        run: |
+          {
+            echo "### Kotlin and Gradle errors"
+            echo '```'
+            grep -E '^e: |^FAILURE|What went wrong|error:' build.log | head -60 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aura-debug-apk
+          path: |
+            ${{ steps.p.outputs.dir }}/app/build/outputs/apk/debug/*.apk
+            ${{ steps.p.outputs.dir }}/build.log
+          if-no-files-found: warn
+
+      # Lets an assistant read the result without downloading a zip: branch build-logs holds errors.txt and build.log.
+      - name: Publish the log to branch build-logs
+        if: always()
+        run: |
+          d="${{ steps.p.outputs.dir }}"
+          mkdir -p /tmp/out
+          cp "$d/build.log" /tmp/out/build.log 2>/dev/null || echo "no build log was produced" > /tmp/out/build.log
+          { grep -E '^e: |What went wrong|error:' /tmp/out/build.log | head -80 || true; } > /tmp/out/errors.txt
+          [ -s /tmp/out/errors.txt ] || echo "no errors found" > /tmp/out/errors.txt
+          echo "run $GITHUB_RUN_ID, commit $GITHUB_SHA" > /tmp/out/run.txt
+          cd /tmp/out
+          git init -q -b build-logs
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add .
+          git commit -qm "build log for run $GITHUB_RUN_ID"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" build-logs

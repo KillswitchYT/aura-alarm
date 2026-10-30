@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/wr"
+    android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical"
+    android:padding="14dp" android:gravity="center_vertical" android:background="@drawable/widget_bg">
+    <TextClock android:id="@+id/wc" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:format12Hour="HH:mm" android:format24Hour="HH:mm" android:textSize="44sp" android:textColor="#FFFFFF"/>
+    <TextView android:id="@+id/wn" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:textSize="14sp" android:textColor="#C9D2F5" android:text="No alarm set"/>
+</LinearLayout>
