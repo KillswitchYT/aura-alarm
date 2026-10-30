@@ -57,6 +57,18 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
 
+      # The APK as a release: on a phone, open the repo's Releases page and tap app-debug.apk.
+      - name: Publish the APK as a release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          d="${{ steps.p.outputs.dir }}"
+          cp "$d/app/build/outputs/apk/debug/app-debug.apk" app-debug.apk
+          gh release delete latest --cleanup-tag -y --repo "${{ github.repository }}" 2>/dev/null || true
+          gh release create latest app-debug.apk --repo "${{ github.repository }}" --target "$GITHUB_SHA" --prerelease \
+            --title "Latest debug build" --notes "Built from commit ${GITHUB_SHA::7}. Debug-signed with the fixed project key, so it updates over the previous build."
+
       - name: Show errors on the run page
         if: always()
         run: |

@@ -4,3 +4,4 @@ local.properties
 *.apk
 *.keystore
 .idea/
+!app/debug.keystore

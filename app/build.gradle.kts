@@ -16,6 +16,16 @@ android {
         versionName = "3.0"
     }
 
+    signingConfigs {
+        getByName("debug") {
+            // A fixed, public debug key (the standard "android" credentials) so every build is signed the same and installs over the last one.
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildFeatures { compose = true }
 
     packaging {
