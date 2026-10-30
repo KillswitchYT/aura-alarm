@@ -10,17 +10,33 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
-      - uses: android-actions/setup-android@v3
+      # The runner image ships an Android SDK. Accept licences and make sure platform 37 and build-tools 37 are there.
+      - name: Prepare Android SDK
+        continue-on-error: true
+        run: |
+          {
+            SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+            echo "SDK=$SDK  java=$(java -version 2>&1 | head -1)"
+            ls "$SDK" || true
+            SM="$SDK/cmdline-tools/latest/bin/sdkmanager"
+            ls "$SM" || true
+            yes | "$SM" --licenses > /dev/null || yes | sudo env "PATH=$PATH" "JAVA_HOME=$JAVA_HOME" "$SM" --licenses > /dev/null || true
+            echo "--- available platforms and build-tools >= 35:"
+            "$SM" --list 2>/dev/null | grep -E 'platforms;android-(3[5-9])|build-tools;3[5-9]' | head -20 || true
+            "$SM" "platforms;android-37" "build-tools;37.0.0" || sudo env "PATH=$PATH" "JAVA_HOME=$JAVA_HOME" "$SM" "platforms;android-37" "build-tools;37.0.0" || echo "sdkmanager could not install them, Gradle will try on its own"
+            echo "--- installed:"; ls "$SDK/platforms" "$SDK/build-tools" || true
+            echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          } 2>&1 | tee sdk.log
 
       # Works whether the repo holds the project itself or just AuraAlarm-native-source.zip.
       - name: Find the project
@@ -43,12 +59,12 @@ jobs:
 
       - name: Show errors on the run page
         if: always()
-        working-directory: ${{ steps.p.outputs.dir }}
         run: |
+          d="${{ steps.p.outputs.dir }}"
           {
-            echo "### Kotlin and Gradle errors"
+            echo "### Errors"
             echo '```'
-            grep -E '^e: |^FAILURE|What went wrong|error:' build.log | head -60 || true
+            cat sdk.log "$d/build.log" 2>/dev/null | grep -E '^e: |^FAILURE|What went wrong|error:|failed|Failed' | head -60 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -60,16 +76,18 @@ jobs:
           path: |
             ${{ steps.p.outputs.dir }}/app/build/outputs/apk/debug/*.apk
             ${{ steps.p.outputs.dir }}/build.log
+            sdk.log
           if-no-files-found: warn
 
-      # Lets an assistant read the result without downloading a zip: branch build-logs holds errors.txt and build.log.
-      - name: Publish the log to branch build-logs
+      # Lets an assistant read the result without downloading a zip: branch build-logs holds errors.txt and the full logs.
+      - name: Publish the logs to branch build-logs
         if: always()
         run: |
           d="${{ steps.p.outputs.dir }}"
           mkdir -p /tmp/out
-          cp "$d/build.log" /tmp/out/build.log 2>/dev/null || echo "no build log was produced" > /tmp/out/build.log
-          { grep -E '^e: |What went wrong|error:' /tmp/out/build.log | head -80 || true; } > /tmp/out/errors.txt
+          cp "$d/build.log" /tmp/out/build.log 2>/dev/null || echo "no build log was produced (build step did not run)" > /tmp/out/build.log
+          cp sdk.log /tmp/out/sdk.log 2>/dev/null || echo "no sdk log" > /tmp/out/sdk.log
+          { cat /tmp/out/sdk.log /tmp/out/build.log | grep -E '^e: |What went wrong|error:|FAILURE|failed|Failed' | head -80 || true; } > /tmp/out/errors.txt
           [ -s /tmp/out/errors.txt ] || echo "no errors found" > /tmp/out/errors.txt
           echo "run $GITHUB_RUN_ID, commit $GITHUB_SHA" > /tmp/out/run.txt
           cd /tmp/out
@@ -77,5 +95,5 @@ jobs:
           git config user.name "ci"
           git config user.email "ci@users.noreply.github.com"
           git add .
-          git commit -qm "build log for run $GITHUB_RUN_ID"
+          git commit -qm "logs for run $GITHUB_RUN_ID"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" build-logs
