@@ -4,6 +4,7 @@ package com.killswitch.aura.glass
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.MutatorMutex
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -93,7 +94,7 @@ class DampedDragAnimation(
 
     fun release() {
         animationScope.launch {
-            awaitFrame()
+            withFrameNanos { } // wait one frame; Compose's own equivalent of awaitFrame(), no extra dependency
             if (value != targetValue) {
                 val threshold = (valueRange.endInclusive - valueRange.start) * 0.025f
                 snapshotFlow { valueAnimation.value }
