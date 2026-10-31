@@ -17,6 +17,7 @@ data class Alarm(
     val gradual: Boolean = false,
     val skip: Long = 0L,
     val challenge: Int = 0,          // 0 none, 1 math, 2 shake
+    val soundName: String = "",      // title of a phone-picked sound ("sn" in the web build)
 ) {
     val hour get() = time.substringBefore(':').toInt()
     val minute get() = time.substringAfter(':').toInt()
@@ -58,6 +59,7 @@ data class Alarm(
         .put("d", JSONArray(days.sorted())).put("dt", date).put("snd", sound)
         .put("vb", if (vibrate) 1 else 0).put("sz", snooze).put("gr", if (gradual) 1 else 0).put("ch", challenge)
         .also { if (skip > 0) it.put("sk", skip) }
+        .also { if (soundName.isNotEmpty()) it.put("sn", soundName) }
 
     companion object {
         val DAY_NAMES = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
@@ -76,6 +78,7 @@ data class Alarm(
                 gradual = o.optInt("gr", 0) == 1,
                 skip = o.optLong("sk", 0),
                 challenge = o.optInt("ch", 0).coerceIn(0, 2),
+                soundName = o.optString("sn", ""),
             )
         }
     }

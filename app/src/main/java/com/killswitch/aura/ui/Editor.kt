@@ -103,6 +103,7 @@ fun Editor(
     var days by remember { mutableStateOf(start.days) }
     var date by remember { mutableStateOf(start.date) }
     var sound by remember { mutableStateOf(start.sound) }
+    var soundName by remember { mutableStateOf(start.soundName) }
     var vibrate by remember { mutableStateOf(start.vibrate) }
     var snooze by remember { mutableIntStateOf(start.snooze) }
     var gradual by remember { mutableStateOf(start.gradual) }
@@ -119,7 +120,10 @@ fun Editor(
     val pickSound = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         @Suppress("DEPRECATION")
         val u = r.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
-        if (u != null) sound = u.toString()
+        if (u != null) {
+            sound = u.toString()
+            soundName = try { RingtoneManager.getRingtone(ctx, u)?.getTitle(ctx) ?: "" } catch (e: Exception) { "" }
+        }
     }
 
     fun pickTime() {
@@ -130,14 +134,14 @@ fun Editor(
     fun build(): Alarm {
         val a = start.copy(
             time = time, label = label.trim(), on = true, days = days, date = if (days.isEmpty()) date else "",
-            sound = sound, vibrate = vibrate, snooze = snooze, gradual = gradual, challenge = challenge, skip = 0,
+            sound = sound, soundName = if (sound.isEmpty() || sound.startsWith("raw:")) "" else soundName, vibrate = vibrate, snooze = snooze, gradual = gradual, challenge = challenge, skip = 0,
         )
         return if (skipping && days.isNotEmpty()) a.copy(skip = a.next().coerceAtLeast(0)) else a
     }
 
     val sounds = buildList {
         add("" to "Default"); add("raw:1" to "Classic beep"); add("raw:2" to "Rising chime"); add("raw:3" to "Soft bells")
-        if (sound.isNotEmpty() && !sound.startsWith("raw:")) add(sound to "Phone sound")
+        if (sound.isNotEmpty() && !sound.startsWith("raw:")) add(sound to soundName.ifEmpty { "Phone sound" })
     }
     val h = time.substringBefore(':').toInt()
 

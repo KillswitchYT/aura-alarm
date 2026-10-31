@@ -175,7 +175,7 @@ fun AuraApp(reload: Int, startTab: Int) {
 
         if (editing != NONE) {
             val idx = editing
-            val start = if (idx == NEW) Alarm() else alarms.getOrNull(idx)
+            val start = if (idx == NEW) Alarm(gradual = Settings.ringStyle(ctx) == 0) else alarms.getOrNull(idx)
             if (start != null) {
                 Editor(
                     backdrop, start, idx == NEW, is24,

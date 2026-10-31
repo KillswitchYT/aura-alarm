@@ -6,6 +6,6 @@ import android.content.Intent
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
-        try { Scheduler.scheduleAll(c) } catch (e: Exception) { Store.set(c, "bootErr", e.toString()) }
+        try { Timers.settleExpired(c); Scheduler.scheduleAll(c) } catch (e: Exception) { Store.set(c, "bootErr", e.toString()) }
     }
 }

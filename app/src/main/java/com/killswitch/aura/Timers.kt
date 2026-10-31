@@ -92,6 +92,29 @@ object Timers {
         }
     }
 
+    /**
+     * Timers still marked running whose end is in the past: the phone was off or the alarm was lost, so nothing will ever ring them.
+     * Returns the new list and the timers that were settled. [graceMs] leaves room for a normal, slightly late delivery.
+     */
+    fun settle(list: List<TimerItem>, now: Long, graceMs: Long = 5_000): Pair<List<TimerItem>, List<TimerItem>> {
+        val gone = list.filter { it.running && it.end <= now - graceMs }
+        if (gone.isEmpty()) return list to emptyList()
+        return list.map { if (it in gone) it.reset() else it } to gone
+    }
+
+    /** Boot and app start: put expired timers back to idle and say so, instead of leaving them stuck on 00:00. */
+    fun settleExpired(c: Context) {
+        val (out, gone) = settle(load(c), System.currentTimeMillis())
+        if (gone.isEmpty()) return
+        save(c, out)
+        val nm = c.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel("timerdone", "Finished timers", NotificationManager.IMPORTANCE_DEFAULT))
+        val f = if (Settings.is24(c)) "HH:mm" else "h:mm a"
+        for (t in gone) nm.notify(6500 + t.id % 1000, Notification.Builder(c, "timerdone").setSmallIcon(R.drawable.ic_small)
+            .setContentTitle(t.label.ifEmpty { "Timer" }).setContentText("Finished at " + android.text.format.DateFormat.format(f, t.end))
+            .setAutoCancel(true).setContentIntent(Scheduler.show(c)).build())
+    }
+
     /** A timer's alarm fired: reset it and ring. */
     fun fired(c: Context, id: Int) {
         val list = load(c)

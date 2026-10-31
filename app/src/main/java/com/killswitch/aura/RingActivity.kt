@@ -19,6 +19,7 @@ class RingActivity : ComponentActivity() {
     private val label = mutableStateOf("Alarm")
     private val snooze = mutableIntStateOf(5)
     private val test = mutableStateOf(false)
+    private val timer = mutableStateOf(false)
     private val challenge = mutableIntStateOf(0)
     private val shakes = mutableIntStateOf(0)
     private var cfg = "{}"
@@ -77,13 +78,14 @@ class RingActivity : ComponentActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
-    private fun canSnooze() = snooze.intValue > 0 || test.value
+    /** Same rule as RingService: no snooze for timers or the "Max + vibrate" style, otherwise the button would do nothing. */
+    private fun canSnooze() = !timer.value && Settings.ringStyle(this) != 2 && (snooze.intValue > 0 || test.value)
 
     private fun read(i: Intent) {
         cfg = i.getStringExtra("cfg") ?: "{}"
         val o = try { JSONObject(cfg) } catch (e: Exception) { JSONObject() }
-        val timer = (if (i.hasExtra("timer")) i.getIntExtra("timer", 0) else o.optInt("timer", 0)) == 1
-        label.value = i.getStringExtra("l")?.ifEmpty { null } ?: if (timer) "Timer" else "Alarm"
+        timer.value = (if (i.hasExtra("timer")) i.getIntExtra("timer", 0) else o.optInt("timer", 0)) == 1
+        label.value = i.getStringExtra("l")?.ifEmpty { null } ?: if (timer.value) "Timer" else "Alarm"
         snooze.intValue = if (i.hasExtra("sz")) i.getIntExtra("sz", 5) else o.optInt("sz", 5)
         test.value = i.getBooleanExtra("test", false)
         challenge.intValue = if (i.hasExtra("ch")) i.getIntExtra("ch", 0) else o.optInt("ch", 0)

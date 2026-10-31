@@ -14,7 +14,8 @@ object Intents {
                     val h = i.getIntExtra(AlarmClock.EXTRA_HOUR, 7)
                     val m = i.getIntExtra(AlarmClock.EXTRA_MINUTES, 0)
                     val days = i.getIntegerArrayListExtra(AlarmClock.EXTRA_DAYS)?.map { it - 1 }?.filter { it in 0..6 }?.toSet() ?: emptySet()
-                    val a = Alarm(time = "%02d:%02d".format(h, m), label = i.getStringExtra(AlarmClock.EXTRA_MESSAGE) ?: "", days = days)
+                    val a = Alarm(time = "%02d:%02d".format(h, m), label = i.getStringExtra(AlarmClock.EXTRA_MESSAGE) ?: "", days = days,
+                        gradual = Settings.ringStyle(c) == 0)
                     Store.saveAlarms(c, (Store.alarms(c) + a).sortedBy { it.time })
                     Scheduler.scheduleAll(c)
                     "home"

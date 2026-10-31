@@ -19,7 +19,8 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
         )
-        route(intent)
+        if (b == null) route(intent) // a re-created activity still holds the old SET_ALARM intent, do not add the alarm twice
+        try { Timers.settleExpired(this) } catch (e: Exception) { }
         Scheduler.scheduleAll(this)
         setContent { AuraApp(reload.intValue, startTab.intValue) }
     }

@@ -148,6 +148,33 @@ fun main() {
     check("web-build backup restores", Backup.parse("""{"al":[$old],"wc":["Cairo|Africa/Cairo|Egypt"],"bed":{"on":1,"goal":7,"wind":15},"vbtn":"stop"}""")!!.let { it.alarms[0].challenge == 2 && it.bed == Bed(true, 7, 15) && it.vbtn == "stop" })
     check("invalid backups rejected", Backup.parse("not json") == null && Backup.parse("""{"wc":[]}""") == null && Backup.parse("""{"al":"x"}""") == null && Backup.parse("") == null)
 
+    section("gaps found in the parity audit")
+    val named = Alarm.from(JSONObject("""{"t":"07:00","on":1,"snd":"content://media/x/1","sn":"Zen Garden"}"""))
+    check("name of a phone-picked sound survives a save", named.toJson().optString("sn") == "Zen Garden")
+    check("sound name is part of the model", named.soundName == "Zen Garden" && Alarm.from(named.toJson()) == named)
+    check("no sound name, no sn key", !Alarm().toJson().has("sn"))
+
+    // a timer or an alarm gets the right words when the loud notification has to stand in for the service
+    check("fallback text: plain alarm", Scheduler.ringTexts("{}") == ("Alarm" to "Alarm ringing") && Scheduler.ringTexts(null) == ("Alarm" to "Alarm ringing"))
+    check("fallback text: labelled alarm", Scheduler.ringTexts("""{"l":"school"}""") == ("school" to "Alarm ringing"))
+    check("fallback text: timer", Scheduler.ringTexts("""{"timer":1}""") == ("Timer" to "Timer finished") && Scheduler.ringTexts("""{"l":"tea","timer":1}""") == ("tea" to "Timer finished"))
+    check("fallback text: garbage is an alarm", Scheduler.ringTexts("not json") == ("Alarm" to "Alarm ringing"))
+
+    // timers that ran out while the phone was off must not stay stuck on "running"
+    val tn = 1_000_000L
+    val live = TimerItem.create(300, "live", tn); val dead = TimerItem(2, "dead", 60_000, "run", tn - 60_000, 60_000); val idle = TimerItem(3, "idle", 1000)
+    val (after, gone) = Timers.settle(listOf(live, dead, idle), tn)
+    check("expired running timer is settled", gone == listOf(dead) && after[1].state == "idle" && after[1].left == 60_000L)
+    check("live and idle timers are untouched", after[0] == live && after[2] == idle)
+    check("a timer ending right now is left for its alarm", Timers.settle(listOf(TimerItem(4, "", 1000, "run", tn - 2_000, 1000)), tn).second.isEmpty())
+    check("nothing to settle returns the same list", Timers.settle(listOf(live, idle), tn).let { it.first == listOf(live, idle) && it.second.isEmpty() })
+
+    // world clock first run
+    check("never saved is null, so defaults show", WorldClock.parseSaved("") == null && WorldClock.parseSaved("  ") == null && WorldClock.parseSaved("junk") == null)
+    check("removing every city is an empty list, not defaults", WorldClock.parseSaved("[]") == emptyList<String>())
+    check("saved list parses", WorldClock.parseSaved("""["Cairo|Africa/Cairo|Egypt",""]""") == listOf("Cairo|Africa/Cairo|Egypt"))
+    check("default cities are valid zones", WorldClock.DEFAULTS.size == 3 && WorldClock.DEFAULTS.all { c -> City.parse(c)!!.let { it.zone in ZoneId.getAvailableZoneIds() && it.country.isNotEmpty() } })
+
     println("\n$total checks, ${total - bad} passed" + if (bad == 0) " - ALL PASSED" else ", $bad FAILED")
     if (bad != 0) System.exit(1)
 }

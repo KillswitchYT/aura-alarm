@@ -26,7 +26,7 @@ object Backup {
         )
     } catch (e: Exception) { null }
 
-    fun exportAll(c: Context) = export(Store.alarms(c), WorldClock.saved(c), Settings.bed(c), Settings.volumeButtons(c))
+    fun exportAll(c: Context) = export(Store.alarms(c), WorldClock.savedOrDefault(c), Settings.bed(c), Settings.volumeButtons(c))
 
     /** Returns false (and changes nothing) when [text] is not a valid backup. */
     fun restore(c: Context, text: String): Boolean {

@@ -101,13 +101,19 @@ object WorldClock {
         return z.hour to z.minute
     }
 
-    fun saved(c: Context): List<String> = try {
-        val a = JSONArray(Store.get(c, "wc").ifEmpty { "[]" })
-        (0 until a.length()).map { a.optString(it) }.filter { it.isNotEmpty() }
-    } catch (e: Exception) { emptyList() }
+    /** What a fresh install shows, same three cities as the web build. */
+    val DEFAULTS = listOf("New York|America/New_York|United States", "London|Europe/London|United Kingdom", "Tokyo|Asia/Tokyo|Japan")
+
+    /** Null means never saved (show [DEFAULTS]); an empty list means the user removed every city. */
+    fun parseSaved(raw: String): List<String>? = try {
+        if (raw.isBlank()) null else JSONArray(raw).let { a -> (0 until a.length()).map { a.optString(it) }.filter { it.isNotEmpty() } }
+    } catch (e: Exception) { null }
+
+    fun saved(c: Context): List<String> = parseSaved(Store.get(c, "wc")) ?: emptyList()
+    fun savedOrDefault(c: Context): List<String> = parseSaved(Store.get(c, "wc")) ?: DEFAULTS
 
     fun save(c: Context, list: List<String>) = Store.set(c, "wc", JSONArray(list).toString())
-    fun add(c: Context, city: City) { val l = saved(c); if (city.key !in l) save(c, l + city.key) }
-    fun remove(c: Context, index: Int) { val l = saved(c).toMutableList(); if (index in l.indices) { l.removeAt(index); save(c, l) } }
+    fun add(c: Context, city: City) { val l = savedOrDefault(c); if (city.key !in l) save(c, l + city.key) }
+    fun remove(c: Context, index: Int) { val l = savedOrDefault(c).toMutableList(); if (index in l.indices) { l.removeAt(index); save(c, l) } }
     fun setAnalog(c: Context, on: Boolean) = Settings.setInt(c, "wa", if (on) 1 else 0)
 }

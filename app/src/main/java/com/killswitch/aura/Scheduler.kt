@@ -93,11 +93,18 @@ object Scheduler {
         Store.set(c, "snoozeT", t.toString())
     }
 
+    /** Title and body for a ringing notification: an alarm says "Alarm ringing", a timer says "Timer finished". */
+    internal fun ringTexts(cfg: String?): Pair<String, String> {
+        val o = try { JSONObject(if (cfg.isNullOrEmpty()) "{}" else cfg) } catch (e: Exception) { JSONObject() }
+        val timer = o.optInt("timer", 0) == 1
+        return o.optString("l", "").ifEmpty { if (timer) "Timer" else "Alarm" } to (if (timer) "Timer finished" else "Alarm ringing")
+    }
+
     /** Android refused to start the ring service from the background: fall back to a loud repeating full-screen notification. */
     fun fallbackRing(c: Context, cfg: String?, test: Boolean) {
         try {
             val o = JSONObject(if (cfg.isNullOrEmpty()) "{}" else cfg)
-            val label = o.optString("l", "").ifEmpty { "Alarm" }
+            val (label, body) = ringTexts(cfg)
             val nm = c.getSystemService(NotificationManager::class.java)
             val aa = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
@@ -113,9 +120,11 @@ object Scheduler {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             val full = PendingIntent.getActivity(c, 1, ra, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val n = Notification.Builder(c, "ringfb").setSmallIcon(R.drawable.ic_small)
-                .setContentTitle(label).setContentText("Alarm ringing")
+                .setContentTitle(label).setContentText(body)
                 .setCategory(Notification.CATEGORY_ALARM).setFullScreenIntent(full, true)
-                .setContentIntent(full).setAutoCancel(true).build()
+                // Tapping or swiping it must not silence a challenge alarm, and nothing else stops it after 10 minutes like RingService does.
+                .setContentIntent(full).setAutoCancel(false).setOngoing(o.optInt("ch", 0) != 0)
+                .setTimeoutAfter(600_000L).build()
             n.flags = n.flags or Notification.FLAG_INSISTENT
             nm.notify(9, n)
         } catch (e: Exception) { }
