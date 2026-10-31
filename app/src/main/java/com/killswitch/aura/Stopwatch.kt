@@ -1,5 +1,6 @@
 package com.killswitch.aura
 
+import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -35,7 +36,17 @@ data class Stopwatch(
             val l = o.optJSONArray("laps")
             return Stopwatch(o.optLong("acc"), o.optInt("run") == 1, o.optLong("st"), (0 until (l?.length() ?: 0)).map { l!!.optLong(it) })
         }
+        /** Null means damaged. Nothing saved yet is a fresh stopwatch. */
+        fun parse(json: String): Stopwatch? = try { if (json.isBlank()) Stopwatch() else from(JSONObject(json)) } catch (e: Exception) { null }
+
         /** mm:ss.cc */
         fun fmt(ms: Long) = "%02d:%02d.%02d".format(ms / 60000, ms / 1000 % 60, ms / 10 % 100)
     }
+}
+
+/** The stopwatch survives leaving the app: it is stored as epoch times, so a running one keeps counting. */
+object StopwatchStore {
+    fun load(c: Context): Stopwatch? = Stopwatch.parse(Store.get(c, "sw"))
+    fun save(c: Context, s: Stopwatch) = Store.set(c, "sw", s.toJson().toString())
+    fun clear(c: Context) = Store.set(c, "sw", "")
 }

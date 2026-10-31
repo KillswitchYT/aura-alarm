@@ -175,6 +175,19 @@ fun main() {
     check("saved list parses", WorldClock.parseSaved("""["Cairo|Africa/Cairo|Egypt",""]""") == listOf("Cairo|Africa/Cairo|Egypt"))
     check("default cities are valid zones", WorldClock.DEFAULTS.size == 3 && WorldClock.DEFAULTS.all { c -> City.parse(c)!!.let { it.zone in ZoneId.getAvailableZoneIds() && it.country.isNotEmpty() } })
 
+    section("slice 2 engine: strict loading, backup extras")
+    check("damaged timers are reported", Timers.parse("not json") == null && Timers.parse("[1]") == null && Timers.parse("{\"a\":1}") == null)
+    check("no timers is fine", Timers.parse("") == emptyList<TimerItem>() && Timers.parse("[]") == emptyList<TimerItem>())
+    check("timers parse back", Timers.parse("[" + TimerItem.create(60, "x", 1000L, 5).toJson() + "]") == listOf(TimerItem.create(60, "x", 1000L, 5)))
+    check("damaged stopwatch is reported", Stopwatch.parse("junk") == null && Stopwatch.parse("[1]") == null)
+    check("nothing saved is a fresh stopwatch", Stopwatch.parse("") == Stopwatch() && Stopwatch.parse("{}") == Stopwatch())
+    val swRun = Stopwatch(acc = 500, running = true, startedAt = 9000, laps = listOf(100L, 400L))
+    check("running stopwatch survives storage", Stopwatch.parse(swRun.toJson().toString()) == swRun && Stopwatch.parse(swRun.toJson().toString())!!.elapsed(10000) == 1500L)
+    val ex = Backup.export(al, listOf("Tokyo|Asia/Tokyo|Japan"), Bed(), "vol", ro = 2, tfmt = "24", wa = 1)
+    Backup.parse(ex)!!.let { check("backup keeps ring style, time format, analog", it.ro == 2 && it.tfmt == "24" && it.wa == 1 && it.alarms == al) }
+    check("backup without extras leaves them alone", Backup.parse(text)!!.let { it.ro == null && it.tfmt == null && it.wa == null })
+    check("bad extras are ignored or clamped", Backup.parse("""{"al":[],"ro":9,"tfmt":"banana","wa":5}""")!!.let { it.ro == 2 && it.tfmt == null && it.wa == 1 })
+
     println("\n$total checks, ${total - bad} passed" + if (bad == 0) " - ALL PASSED" else ", $bad FAILED")
     if (bad != 0) System.exit(1)
 }

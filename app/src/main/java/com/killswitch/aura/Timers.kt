@@ -54,6 +54,14 @@ object Timers {
         (0 until a.length()).mapNotNull { a.optJSONObject(it)?.let { o -> TimerItem.from(o) } }
     } catch (e: Exception) { emptyList() }
 
+    /** Strict parse: null means the saved timers are damaged. Empty or blank is a normal empty list. */
+    fun parse(json: String): List<TimerItem>? = try {
+        val a = JSONArray(json.ifBlank { "[]" })
+        (0 until a.length()).map { TimerItem.from(a.getJSONObject(it)) }
+    } catch (e: Exception) { null }
+
+    fun tryLoad(c: Context): List<TimerItem>? = parse(Store.get(c, "tm"))
+
     fun save(c: Context, list: List<TimerItem>) {
         val a = JSONArray(); list.forEach { a.put(it.toJson()) }
         Store.set(c, "tm", a.toString())

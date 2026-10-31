@@ -48,6 +48,7 @@ import com.killswitch.aura.Perms
 import com.killswitch.aura.Scheduler
 import com.killswitch.aura.Settings
 import com.killswitch.aura.Store
+import com.killswitch.aura.WorldClock
 import com.killswitch.aura.glass.LiquidBottomTab
 import com.killswitch.aura.glass.LiquidBottomTabs
 import com.killswitch.aura.glass.LiquidButton
@@ -76,6 +77,8 @@ fun AuraApp(reload: Int, startTab: Int) {
     var loadKey by remember { mutableIntStateOf(0) }
     var checks by remember { mutableStateOf(Perms.check(ctx)) }
     var editing by remember { mutableIntStateOf(NONE) }
+    var picking by remember { mutableStateOf(false) }
+    var worldRev by remember { mutableIntStateOf(0) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val seen = remember { mutableSetOf<Any>() }
     val is24 = Settings.is24(ctx)
@@ -135,7 +138,9 @@ fun AuraApp(reload: Int, startTab: Int) {
                 onReset = { Store.set(ctx, "al", "[]"); Scheduler.scheduleAll(ctx); loadKey++ },
             )
             4 -> SetupTab(checks, pad, { Perms.fix(activity, it); checks = Perms.check(ctx) }, { Perms.runFix(activity, it); checks = Perms.check(ctx) })
-            else -> NextUp(TABS[i].label, pad)
+            1 -> WorldTab(reload * 1000 + loadKey + worldRev * 100_000, now, is24, pad, seen) { picking = true }
+            2 -> TimersTab(reload * 1000 + loadKey, now, pad, seen)
+            else -> StopwatchTab(reload * 1000 + loadKey, pad, seen)
         }
     }
 
@@ -173,6 +178,10 @@ fun AuraApp(reload: Int, startTab: Int) {
             }
         }
 
+        if (picking) {
+            CityPicker(backdrop, now, onPick = { WorldClock.add(ctx, it); worldRev++; picking = false }, onClose = { picking = false })
+        }
+
         if (editing != NONE) {
             val idx = editing
             val start = if (idx == NEW) Alarm(gradual = Settings.ringStyle(ctx) == 0) else alarms.getOrNull(idx)
@@ -185,16 +194,6 @@ fun AuraApp(reload: Int, startTab: Int) {
                     onClose = { editing = NONE },
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun NextUp(title: String, pad: PaddingValues) {
-    Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
-        Column(Modifier.glassCard().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            BasicText(title, style = ts(22f, weight = FontWeight.ExtraBold))
-            BasicText("This screen lands in the next build.", style = ts(14f, Aura.Muted))
         }
     }
 }
