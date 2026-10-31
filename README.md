@@ -21,6 +21,12 @@ and glass pieces float above it and refract it. Lens refraction needs Android 13
 as `app-debug.apk`, and a log of the build is pushed to the `build-logs` branch. Debug builds use the fixed key in
 `app/debug.keystore` (the standard public "android" credentials), so each build installs over the last one.
 
+## Build loop (for an assistant with a sandbox)
+`tools/ci/cycle.sh "message"` pushes the project to KillswitchYT/aura-alarm, waits for the Actions build (about 3 minutes)
+and prints the Kotlin errors or BUILD SUCCESSFUL. `tools/ci/read.sh` re-reads the last run. Both need GH_TOKEN, or a file
+/tmp/.gh_env containing: export GH_TOKEN='github_pat_...'. The sandbox cannot reach Google Maven or Maven Central, so it cannot
+run Gradle itself. GitHub does the compiling.
+
 ## Build
 Needs JDK 17+ and the Android SDK (platform 37, build-tools 37.0.0). Set `sdk.dir` in `local.properties`.
 
