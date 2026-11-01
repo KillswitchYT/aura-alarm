@@ -118,17 +118,14 @@ fun Field(
     }
 }
 
-/** Empty state: says what this screen is for and offers the next step right there. */
+/** Empty state: says what this screen is for and offers the next step right there. Left aligned, no box. */
 @Composable
 fun EmptyState(icon: Ic, title: String, body: String, actionText: String? = null, onAction: () -> Unit = {}) {
-    Column(
-        Modifier.fillMaxWidth().glassCard().padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Icon(icon, Aura.Muted, Modifier.size(40.dp))
-        BasicText(title, style = ts(18f, weight = FontWeight.Bold))
-        BasicText(body, style = centered(ts(14f, Aura.Muted)))
-        if (actionText != null) { Spacer(Modifier.height(4.dp)); AccentPill(actionText, onAction) }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 36.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Icon(icon, Aura.Muted, Modifier.size(36.dp))
+        BasicText(title, style = ts(22f, weight = FontWeight.ExtraBold))
+        BasicText(body, style = ts(15f, Aura.Muted))
+        if (actionText != null) { Spacer(Modifier.height(6.dp)); AccentPill(actionText, onAction) }
     }
 }
 
@@ -136,14 +133,11 @@ fun EmptyState(icon: Ic, title: String, body: String, actionText: String? = null
 @Composable
 fun FailCard(title: String, body: String, onRetry: () -> Unit, onReset: () -> Unit) {
     var confirm by remember { mutableStateOf(false) }
-    Column(
-        Modifier.fillMaxWidth().glassCard().padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Icon(Ic.Alert, Aura.Rose, Modifier.size(38.dp))
-        BasicText(title, style = ts(18f, weight = FontWeight.Bold))
-        BasicText(body, style = centered(ts(14f, Aura.Muted)))
-        Spacer(Modifier.height(4.dp))
+    Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 36.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Icon(Ic.Alert, Aura.Rose, Modifier.size(36.dp))
+        BasicText(title, style = ts(22f, weight = FontWeight.ExtraBold))
+        BasicText(body, style = ts(15f, Aura.Muted))
+        Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             AccentPill("Try again", onRetry)
             Box(Modifier.pressable { if (confirm) onReset() else confirm = true }.padding(8.dp)) {
@@ -156,22 +150,20 @@ fun FailCard(title: String, body: String, onRetry: () -> Unit, onReset: () -> Un
 /** No match: a search or filter found nothing. */
 @Composable
 fun NoResults(text: String) {
-    Column(
-        Modifier.fillMaxWidth().padding(vertical = 24.dp, horizontal = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(Ic.Search, Aura.Muted, Modifier.size(32.dp))
-        BasicText(text, style = centered(ts(15f, Aura.Muted, FontWeight.Bold)))
+    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 28.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Ic.Search, Aura.Muted, Modifier.size(24.dp))
+        Spacer(Modifier.size(12.dp))
+        BasicText(text, style = ts(15f, Aura.Muted, FontWeight.Bold))
     }
 }
 
-/** Loading: placeholder card that breathes while data is read. */
+/** Loading: placeholder shapes that breathe while data is read. */
 @Composable
 fun SkeletonCard(lines: Int = 2, height: Int = 20) {
     val t = rememberInfiniteTransition(label = "skeleton")
     val a by t.animateFloat(.35f, .85f, infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse), label = "a")
     Column(
-        Modifier.fillMaxWidth().glassCard().padding(horizontal = 20.dp, vertical = height.dp).graphicsLayer { alpha = a },
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = height.dp).graphicsLayer { alpha = a },
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Box(Modifier.size(width = 130.dp, height = 26.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = .14f)))
