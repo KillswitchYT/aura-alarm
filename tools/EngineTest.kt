@@ -192,6 +192,33 @@ fun main() {
     check("a snooze in the future is put back", Scheduler.snoozeLive(2_000L, 1_000L))
     check("a snooze that has passed is not", !Scheduler.snoozeLive(1_000L, 1_000L) && !Scheduler.snoozeLive(500L, 1_000L) && !Scheduler.snoozeLive(0L, 1_000L))
 
+    section("firing order")
+    run {
+        val log = mutableListOf<String>(); val errs = mutableListOf<String>()
+        val ok = Fire.run({ log += "ring"; true }, { log += "remember" }, { log += "book" }, { log += "rearm" }, { errs += it.message!! })
+        check("ring first, then remember, bookkeeping, re-arm", ok && log == listOf("ring", "remember", "book", "rearm") && errs.isEmpty())
+    }
+    run {
+        val log = mutableListOf<String>()
+        val ok = Fire.run({ log += "ring"; false }, { log += "remember" }, { log += "book" }, { log += "rearm" }, { })
+        check("a ring that failed is NOT remembered, so the backup alarm can still ring", !ok && "remember" !in log && log == listOf("ring", "book", "rearm"))
+    }
+    run {
+        val log = mutableListOf<String>(); val errs = mutableListOf<String>()
+        val ok = Fire.run({ log += "ring"; throw IllegalStateException("boom") }, { log += "remember" }, { log += "book" }, { log += "rearm" }, { errs += it.message!! })
+        check("a ring that throws still lets the next alarm be armed", !ok && log == listOf("ring", "book", "rearm") && errs == listOf("boom"))
+    }
+    run {
+        val log = mutableListOf<String>(); val errs = mutableListOf<String>()
+        val ok = Fire.run({ log += "ring"; true }, { throw IllegalStateException("disk") }, { throw IllegalStateException("json") }, { log += "rearm" }, { errs += it.message!! })
+        check("bookkeeping failures never undo the ring or skip the re-arm", ok && log == listOf("ring", "rearm") && errs == listOf("disk", "json"))
+    }
+    run {
+        val log = mutableListOf<String>()
+        Fire.run({ true }, { log += "remember" }, { }, { throw IllegalStateException("x") }, { log += "err" })
+        check("a failing re-arm is reported, not thrown", log == listOf("remember", "err"))
+    }
+
     println("\n$total checks, ${total - bad} passed" + if (bad == 0) " - ALL PASSED" else ", $bad FAILED")
     if (bad != 0) System.exit(1)
 }

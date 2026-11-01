@@ -116,7 +116,11 @@ class RingService : Service() {
         try {
             if (Build.VERSION.SDK_INT >= 29) startForeground(7, b.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
             else startForeground(7, b.build())
-        } catch (e: Exception) { Store.set(this, "fgErr", e.toString()) }
+        } catch (e: Exception) {
+            // Without foreground status Android kills this service within seconds. The notification keeps ringing after that.
+            Store.set(this, "fgErr", e.toString())
+            Scheduler.fallbackRing(this, cfgStr, test)
+        }
     }
 
     private fun soundUri(snd: String): Uri = when {

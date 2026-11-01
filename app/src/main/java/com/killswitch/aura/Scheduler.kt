@@ -115,8 +115,8 @@ object Scheduler {
     }
 
     /** Android refused to start the ring service from the background: fall back to a loud repeating full-screen notification. */
-    fun fallbackRing(c: Context, cfg: String?, test: Boolean) {
-        try {
+    fun fallbackRing(c: Context, cfg: String?, test: Boolean): Boolean {
+        return try {
             val o = JSONObject(if (cfg.isNullOrEmpty()) "{}" else cfg)
             val (label, body) = ringTexts(cfg)
             val nm = c.getSystemService(NotificationManager::class.java)
@@ -141,6 +141,7 @@ object Scheduler {
                 .setTimeoutAfter(600_000L).build()
             n.flags = n.flags or Notification.FLAG_INSISTENT
             nm.notify(9, n)
-        } catch (e: Exception) { }
+            true
+        } catch (e: Exception) { Store.set(c, "fbErr", e.toString()); false }
     }
 }

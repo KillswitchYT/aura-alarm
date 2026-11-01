@@ -27,22 +27,28 @@ class AlarmReceiver : BroadcastReceiver() {
         val code = i.getIntExtra("i", 0)
         val key = "f${code / 2}"
         if (t.toString() == Store.get(c, key)) return // main and backup both arrived, ring once
-        if (i.action == "BACKUP") Store.set(c, "missed", "1")
-        Store.set(c, key, t.toString())
-        if (code < 9000) markFired(c, code / 2, t) else if (code == 9000) Store.set(c, "snoozeT", "0")
-        startRing(c, i.getStringExtra("cfg"), i.getBooleanExtra("test", false))
-        Scheduler.scheduleAll(c)
+        Fire.run(
+            ring = { startRing(c, i.getStringExtra("cfg"), i.getBooleanExtra("test", false)) },
+            remember = { Store.set(c, key, t.toString()) },
+            bookkeeping = {
+                if (i.action == "BACKUP") Store.set(c, "missed", "1")
+                if (code < 9000) markFired(c, code / 2, t) else if (code == 9000) Store.set(c, "snoozeT", "0")
+            },
+            rearm = { Scheduler.scheduleAll(c) },
+            onError = { Store.set(c, "rxErr", it.toString()) },
+        )
     }
 
     companion object {
         /** Starts the ring service. If Android refuses (background start limits), a loud full-screen notification takes over. */
-        fun startRing(c: Context, cfg: String?, test: Boolean) {
+        fun startRing(c: Context, cfg: String?, test: Boolean): Boolean {
             try {
                 c.startForegroundService(Intent(c, RingService::class.java).putExtra("cfg", cfg).putExtra("test", test))
+                return true
             } catch (e: Exception) {
                 Store.set(c, "fgsErr", e.toString())
-                Scheduler.fallbackRing(c, cfg, test)
             }
+            return Scheduler.fallbackRing(c, cfg, test)
         }
 
         /** One-time and dated alarms switch themselves off after ringing; a spent skip is cleared. */
