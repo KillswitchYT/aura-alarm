@@ -48,6 +48,7 @@ object Scheduler {
                 ?.let { am.cancel(it); it.cancel() }
         }
         pi(c, 9100, "BED", 0, "", PendingIntent.FLAG_NO_CREATE)?.let { am.cancel(it); it.cancel() }
+        try { rearmSnooze(c, am) } catch (e: Exception) { Store.set(c, "rxErr", "snooze rearm: " + e) }
         var fail = !exact
         var first = 0L
         for ((i, a) in Store.alarms(c).withIndex()) {
@@ -91,6 +92,19 @@ object Scheduler {
         try { am.setAlarmClock(AlarmManager.AlarmClockInfo(t, show(c)), p) }
         catch (e: Exception) { arm(am, canExact(c), t, p) }
         Store.set(c, "snoozeT", t.toString())
+        Store.set(c, "snoozeCfg", cfg)
+        Store.set(c, "snoozeTest", if (test) "1" else "")
+    }
+
+    /** A snooze that is still in the future is worth putting back after a reboot or an app update, both of which wipe every alarm. */
+    internal fun snoozeLive(t: Long, now: Long) = t > now
+
+    private fun rearmSnooze(c: Context, am: AlarmManager) {
+        val t = Store.get(c, "snoozeT").toLongOrNull() ?: return
+        val cfg = Store.get(c, "snoozeCfg")
+        if (!snoozeLive(t, System.currentTimeMillis()) || cfg.isEmpty()) return
+        val p = pi(c, 9000, "FIRE", t, cfg, PendingIntent.FLAG_UPDATE_CURRENT, Store.get(c, "snoozeTest") == "1") ?: return
+        try { am.setAlarmClock(AlarmManager.AlarmClockInfo(t, show(c)), p) } catch (e: Exception) { arm(am, canExact(c), t, p) }
     }
 
     /** Title and body for a ringing notification: an alarm says "Alarm ringing", a timer says "Timer finished". */

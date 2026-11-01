@@ -12,8 +12,10 @@ android {
         applicationId = "com.killswitch.aura"
         minSdk = 26
         targetSdk = 34 // kept low on purpose: raising it changes alarm and foreground-service rules, test that separately
-        versionCode = 6
-        versionName = "3.0"
+        // CI numbers every build; a local build falls back to 100, which still beats the old 6.
+        val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        versionCode = 100 + (run ?: 0)
+        versionName = "3.1." + (run ?: "dev")
     }
 
     signingConfigs {

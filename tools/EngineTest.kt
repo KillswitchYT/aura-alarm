@@ -188,6 +188,10 @@ fun main() {
     check("backup without extras leaves them alone", Backup.parse(text)!!.let { it.ro == null && it.tfmt == null && it.wa == null })
     check("bad extras are ignored or clamped", Backup.parse("""{"al":[],"ro":9,"tfmt":"banana","wa":5}""")!!.let { it.ro == 2 && it.tfmt == null && it.wa == 1 })
 
+    section("snooze after reboot")
+    check("a snooze in the future is put back", Scheduler.snoozeLive(2_000L, 1_000L))
+    check("a snooze that has passed is not", !Scheduler.snoozeLive(1_000L, 1_000L) && !Scheduler.snoozeLive(500L, 1_000L) && !Scheduler.snoozeLive(0L, 1_000L))
+
     println("\n$total checks, ${total - bad} passed" + if (bad == 0) " - ALL PASSED" else ", $bad FAILED")
     if (bad != 0) System.exit(1)
 }

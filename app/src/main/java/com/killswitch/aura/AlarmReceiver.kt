@@ -29,7 +29,7 @@ class AlarmReceiver : BroadcastReceiver() {
         if (t.toString() == Store.get(c, key)) return // main and backup both arrived, ring once
         if (i.action == "BACKUP") Store.set(c, "missed", "1")
         Store.set(c, key, t.toString())
-        if (code < 9000) markFired(c, code / 2, t)
+        if (code < 9000) markFired(c, code / 2, t) else if (code == 9000) Store.set(c, "snoozeT", "0")
         startRing(c, i.getStringExtra("cfg"), i.getBooleanExtra("test", false))
         Scheduler.scheduleAll(c)
     }
