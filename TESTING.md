@@ -10,7 +10,6 @@ Tick a line only when you saw it work. Write down anything that did not. Phone o
 ## 1. The ring (the only thing that really matters)
 Use Setup, Test alarm now, then the real thing below.
 - [ ] Test alarm with the screen on: sound, vibration, ring screen. Dismiss stops everything.
-- [ ] Test alarm, lock the phone first (press power, then start the test from the notification shade is not possible, so use a real alarm for this one).
 - [ ] REAL alarm 2 minutes from now, phone locked, screen off, face down: screen turns on over the lock screen, sound plays, vibrates. Dismiss it.
 - [ ] Same with the phone locked and a secure lock (PIN or fingerprint). The ring screen still shows over the lock.
 - [ ] Same with another app open in front (a game or YouTube). The ring screen takes over.
