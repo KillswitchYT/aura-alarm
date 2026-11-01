@@ -76,7 +76,7 @@ fun countdown(ms: Long): String {
 fun HomeTab(
     state: AlarmsState, now: Long, is24: Boolean, protectionOk: Int, protectionTotal: Int, padding: PaddingValues,
     seen: MutableSet<Any>, onProtection: () -> Unit, onToggle: (Int, Boolean) -> Unit, onOpen: (Int) -> Unit,
-    onAdd: () -> Unit, onRetry: () -> Unit, onReset: () -> Unit,
+    onAdd: () -> Unit, onRetry: () -> Unit, onReset: () -> Unit, notice: String? = null, onNotice: () -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
     val alarms = (state as? AlarmsState.Ready)?.list.orEmpty()
@@ -87,6 +87,7 @@ fun HomeTab(
     LazyColumn(Modifier.fillMaxSize(), contentPadding = padding, verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item(key = "title") { BasicText("Aura Alarm", Modifier.padding(start = 4.dp), style = ts(16f, Aura.Muted, FontWeight.Bold)) }
         item(key = "hero") { Box(Modifier.staggerIn(0, seen.add("hero"))) { Hero(now, is24, Scheduler.nextOf(alarms, now)) } }
+        if (notice != null) item(key = "notice") { Notice(notice, onNotice) }
         if (protectionOk < protectionTotal) item(key = "prot") {
             Box(Modifier.staggerIn(1, seen.add("prot"))) { Protection(protectionOk, protectionTotal, onProtection) }
         }
@@ -116,7 +117,8 @@ private fun Hero(now: Long, is24: Boolean, next: Long) {
     val cal = Calendar.getInstance().apply { timeInMillis = now }
     val h = cal.get(Calendar.HOUR_OF_DAY)
     var frameMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) { while (true) withFrameNanos { frameMs = System.currentTimeMillis() } }
+    // 30 fps is plenty for an arc that moves 6 degrees a second, and it halves the work the glass has to redo behind it.
+    LaunchedEffect(Unit) { var last = 0L; while (true) withFrameNanos { ns -> if (ns - last >= 33_000_000L) { last = ns; frameMs = System.currentTimeMillis() } } }
 
     Box(Modifier.fillMaxWidth().glassCard(RoundedCornerShape(36.dp)).padding(24.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -151,6 +153,19 @@ private fun Hero(now: Long, is24: Boolean, next: Long) {
                 style = ts(14f, if (next > 0) Aura.Accent else Aura.Muted, FontWeight.Bold),
             )
         }
+    }
+}
+
+/** Something the person should know about: an alarm that needed its backup, or Android refusing to arm one. */
+@Composable
+private fun Notice(text: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().pressable(onClick).glassCard(RoundedCornerShape(24.dp)).padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Ic.Alert, Aura.Rose, Modifier.size(22.dp))
+        Spacer(Modifier.size(12.dp))
+        BasicText(text, Modifier.weight(1f), style = ts(14f, Aura.Text, FontWeight.Bold))
     }
 }
 

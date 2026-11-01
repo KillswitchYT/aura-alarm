@@ -102,6 +102,14 @@ fun Editor(
     var label by remember { mutableStateOf(start.label) }
     var days by remember { mutableStateOf(start.days) }
     var date by remember { mutableStateOf(start.date) }
+    fun pickDate() {
+        val c = java.util.Calendar.getInstance()
+        if (date.isNotEmpty()) try { val p = date.split("-").map { it.toInt() }; c.set(p[0], p[1] - 1, p[2]) } catch (e: Exception) { }
+        android.app.DatePickerDialog(
+            ctx, { _, y, mo, d -> date = "%d-%02d-%02d".format(y, mo + 1, d); days = emptySet() },
+            c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH),
+        ).also { it.datePicker.minDate = System.currentTimeMillis() - 1000L }.show()
+    }
     var sound by remember { mutableStateOf(start.sound) }
     var soundName by remember { mutableStateOf(start.soundName) }
     var vibrate by remember { mutableStateOf(start.vibrate) }
@@ -183,14 +191,12 @@ fun Editor(
             Section("Repeat")
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 listOf("S", "M", "T", "W", "T", "F", "S").forEachIndexed { d, l ->
-                    DayDot(l, d in days) { days = if (d in days) days - d else days + d }
+                    DayDot(l, d in days) { days = if (d in days) days - d else days + d; date = "" }
                 }
             }
-            if (date.isNotEmpty() && days.isEmpty()) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    BasicText("One-off on $date", Modifier.weight(1f), style = ts(14f, Aura.Muted))
-                    Chip("Clear date", false) { date = "" }
-                }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip(if (date.isEmpty()) "Pick a date" else "One-off on $date", date.isNotEmpty()) { pickDate() }
+                if (date.isNotEmpty()) Chip("Clear date", false) { date = "" }
             }
 
             Section("Snooze")

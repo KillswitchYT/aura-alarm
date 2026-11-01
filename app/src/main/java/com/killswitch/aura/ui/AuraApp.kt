@@ -78,6 +78,7 @@ fun AuraApp(reload: Int, startTab: Int) {
     var checks by remember { mutableStateOf(Perms.check(ctx)) }
     var editing by remember { mutableIntStateOf(NONE) }
     var picking by remember { mutableStateOf(false) }
+    var night by remember { mutableStateOf(false) }
     var worldRev by remember { mutableIntStateOf(0) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val seen = remember { mutableSetOf<Any>() }
@@ -123,6 +124,15 @@ fun AuraApp(reload: Int, startTab: Int) {
         }
     }
 
+    // Two things the engine writes down when it had to work around a problem. Say them out loud instead of hiding them.
+    val flags = remember(reload, loadKey) { (Store.get(ctx, "missed") == "1") to (Store.get(ctx, "schedFail") == "1") }
+    val armFailed = flags.second && checks.firstOrNull()?.ok == true
+    val notice = when {
+        armFailed -> "Android refused to arm an alarm. Tap to try again."
+        flags.first -> "Your last alarm only rang because its backup fired. Tap to dismiss."
+        else -> null
+    }
+
     val bars = WindowInsets.systemBars.asPaddingValues()
     val pad = PaddingValues(16.dp, bars.calculateTopPadding() + 12.dp, 16.dp, bars.calculateBottomPadding() + 190.dp)
 
@@ -136,8 +146,16 @@ fun AuraApp(reload: Int, startTab: Int) {
                 onAdd = { editing = NEW },
                 onRetry = { state = AlarmsState.Loading; loadKey++ },
                 onReset = { Store.set(ctx, "al", "[]"); Scheduler.scheduleAll(ctx); loadKey++ },
+                notice = notice,
+                onNotice = { if (armFailed) Scheduler.scheduleAll(ctx) else Store.set(ctx, "missed", "0"); loadKey++ },
             )
-            4 -> SetupTab(checks, pad, { Perms.fix(activity, it); checks = Perms.check(ctx) }, { Perms.runFix(activity, it); checks = Perms.check(ctx) })
+            4 -> SetupTab(
+                checks, pad, now, is24, reload * 1000 + loadKey, seen,
+                onFix = { Perms.fix(activity, it); checks = Perms.check(ctx) },
+                onRunFix = { Perms.runFix(activity, it); checks = Perms.check(ctx) },
+                onNight = { night = true },
+                onChanged = { loadKey++; checks = Perms.check(ctx) },
+            )
             1 -> WorldTab(reload * 1000 + loadKey + worldRev * 100_000, now, is24, pad, seen) { picking = true }
             2 -> TimersTab(reload * 1000 + loadKey, now, pad, seen)
             else -> StopwatchTab(reload * 1000 + loadKey, pad, seen)
@@ -195,37 +213,7 @@ fun AuraApp(reload: Int, startTab: Int) {
                 )
             }
         }
-    }
-}
 
-/** The 7 protection checks with a one-tap fix for each, plus the repair buttons. The rest of Setup comes next. */
-@Composable
-private fun SetupTab(checks: List<Check>, pad: PaddingValues, onFix: (Int) -> Unit, onRunFix: (String) -> Unit) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = pad, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item {
-            Column(Modifier.padding(start = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                BasicText("Setup", style = ts(26f, weight = FontWeight.ExtraBold))
-                BasicText("${checks.count { it.ok }} of ${checks.size} protections on", style = ts(14f, Aura.Muted))
-            }
-        }
-        items(checks.withIndex().toList(), key = { it.index }) { iv ->
-            Row(Modifier.fillMaxWidth().glassCard(RoundedCornerShape(24.dp)).padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    BasicText(iv.value.title, style = ts(16f, weight = FontWeight.Bold))
-                    BasicText(iv.value.hint, style = ts(13f, Aura.Muted))
-                }
-                if (iv.value.ok) BasicText("On", style = ts(15f, Aura.Mint, FontWeight.Bold))
-                else Box(Modifier.pressable { onFix(iv.index) }.padding(8.dp)) { BasicText("Fix", style = ts(15f, Aura.Accent, FontWeight.ExtraBold)) }
-            }
-        }
-        item { BasicText("Fixes", Modifier.padding(start = 4.dp, top = 8.dp), style = ts(13f, Aura.Muted, FontWeight.Bold)) }
-        items(Perms.FIXES, key = { it.id }) { f ->
-            Row(Modifier.fillMaxWidth().pressable { onRunFix(f.id) }.glassCard(RoundedCornerShape(24.dp)).padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    BasicText(f.title, style = ts(16f, weight = FontWeight.Bold))
-                    BasicText(f.hint, style = ts(13f, Aura.Muted))
-                }
-            }
-        }
+        if (night) NightClock(is24, now) { night = false }
     }
 }
