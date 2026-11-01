@@ -3,6 +3,8 @@ package com.killswitch.aura.ui
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
@@ -36,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -81,7 +84,8 @@ fun AuraApp(reload: Int, startTab: Int) {
     var night by remember { mutableStateOf(false) }
     var worldRev by remember { mutableIntStateOf(0) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    val seen = remember { mutableSetOf<Any>() }
+    // One "already animated" set per tab, wiped each time you arrive, so a tab greets you with its stagger every visit.
+    val seenFor = remember { Array(TABS.size) { mutableSetOf<Any>() } }
     val is24 = Settings.is24(ctx)
     val backdrop = rememberLayerBackdrop()
     val alarms = (state as? AlarmsState.Ready)?.list.orEmpty()
@@ -108,21 +112,26 @@ fun AuraApp(reload: Int, startTab: Int) {
         Scheduler.scheduleAll(ctx)
     }
 
-    // Tab change: the old page slides and fades out while the new one slides and fades in, 280 ms, in the direction of travel.
+    // Tab change: the old page slides, shrinks a touch and fades out while the new one grows into place, in the direction of travel.
+    // Jumping four tabs (Alarms to Setup) travels further and takes a little longer than moving one.
     var shown by remember { mutableIntStateOf(tab) }
     var leaving by remember { mutableIntStateOf(-1) }
     var dir by remember { mutableIntStateOf(1) }
+    var steps by remember { mutableIntStateOf(1) }
     val slide = remember { Animatable(1f) }
     LaunchedEffect(tab) {
         if (tab != shown) {
+            steps = kotlin.math.abs(tab - shown)
             dir = if (tab > shown) 1 else -1
             leaving = shown
+            seenFor[tab].clear()
             shown = tab
             slide.snapTo(0f)
-            slide.animateTo(1f, tween(280, easing = FastOutSlowInEasing))
+            slide.animateTo(1f, tween(260 + 40 * steps, easing = FastOutSlowInEasing))
             leaving = -1
         }
     }
+    val reach = .10f + .04f * (steps - 1)
 
     // Two things the engine writes down when it had to work around a problem. Say them out loud instead of hiding them.
     val flags = remember(reload, loadKey) { (Store.get(ctx, "missed") == "1") to (Store.get(ctx, "schedFail") == "1") }
@@ -137,6 +146,7 @@ fun AuraApp(reload: Int, startTab: Int) {
     val pad = PaddingValues(16.dp, bars.calculateTopPadding() + 12.dp, 16.dp, bars.calculateBottomPadding() + 190.dp)
 
     val page: @Composable (Int) -> Unit = { i ->
+        val seen = seenFor[i]
         when (i) {
             0 -> HomeTab(
                 state, now, is24, checks.count { it.ok }, checks.size, pad, seen,
@@ -167,9 +177,15 @@ fun AuraApp(reload: Int, startTab: Int) {
         Box(Modifier.layerBackdrop(backdrop).fillMaxSize()) {
             Canvas(Modifier.fillMaxSize()) { drawAuraScene() }
             if (leaving >= 0) {
-                Box(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - slide.value; translationX = -dir * slide.value * size.width * .10f }) { page(leaving) }
+                Box(Modifier.fillMaxSize().graphicsLayer {
+                    alpha = 1f - slide.value; translationX = -dir * slide.value * size.width * reach
+                    scaleX = 1f - .05f * slide.value; scaleY = scaleX
+                }) { page(leaving) }
             }
-            Box(Modifier.fillMaxSize().graphicsLayer { alpha = slide.value; translationX = dir * (1f - slide.value) * size.width * .10f }) { page(shown) }
+            Box(Modifier.fillMaxSize().graphicsLayer {
+                alpha = slide.value; translationX = dir * (1f - slide.value) * size.width * reach
+                scaleX = .95f + .05f * slide.value; scaleY = scaleX
+            }) { page(shown) }
         }
 
         LiquidBottomTabs(
@@ -178,17 +194,25 @@ fun AuraApp(reload: Int, startTab: Int) {
         ) {
             TABS.forEachIndexed { i, t ->
                 LiquidBottomTab({ tab = i }) {
-                    Icon(t.icon, if (tab == i) Aura.Text else Aura.Muted, Modifier.size(24.dp))
-                    BasicText(t.label, style = ts(11f, if (tab == i) Aura.Text else Aura.Muted, FontWeight.Bold))
+                    val on by selectAnim(tab == i)
+                    val hop by animateFloatAsState(if (tab == i) 1f else 0f, spring(dampingRatio = .45f, stiffness = 380f), label = "tabHop")
+                    Icon(t.icon, lerp(Aura.Muted, Aura.Text, on), Modifier.size(24.dp).graphicsLayer {
+                        scaleX = 1f + .14f * hop; scaleY = scaleX; translationY = -3.dp.toPx() * hop
+                    })
+                    BasicText(t.label, style = ts(11f, lerp(Aura.Muted, Aura.Text, on), FontWeight.Bold))
                 }
             }
         }
 
         // The empty screen has its own button, so the floating one only appears once there is something to add to.
-        if (tab == 0 && editing == NONE && alarms.isNotEmpty()) {
+        val fabOn = tab == 0 && editing == NONE && alarms.isNotEmpty()
+        val fab by animateFloatAsState(if (fabOn) 1f else 0f, tween(220, easing = FastOutSlowInEasing), label = "fab")
+        if (fab > .01f) {
             LiquidButton(
-                { editing = NEW }, backdrop,
-                Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 20.dp, bottom = 100.dp),
+                { if (fabOn) editing = NEW }, backdrop,
+                Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 20.dp, bottom = 100.dp).graphicsLayer {
+                    alpha = fab; scaleX = .85f + .15f * fab; scaleY = scaleX; translationY = (1f - fab) * 28.dp.toPx()
+                },
                 tint = Aura.Accent,
             ) {
                 Icon(Ic.Plus, Aura.OnAccent, Modifier.size(22.dp))

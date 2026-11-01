@@ -62,22 +62,26 @@ private fun Stag(i: Int, key: String, seen: MutableSet<Any>, content: @Composabl
 
 @Composable
 private fun Choice(title: String, sub: String?, selected: Boolean, onClick: () -> Unit) {
+    val sel by selectAnim(selected)
     Row(
         Modifier.fillMaxWidth().pressable(onClick).glassCard(RoundedCornerShape(24.dp))
-            .background(if (selected) Color.White.copy(alpha = .08f) else Color.Transparent).padding(horizontal = 20.dp, vertical = 14.dp),
+            .background(Color.White.copy(alpha = .08f * sel)).padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             BasicText(title, style = ts(16f, weight = FontWeight.Bold))
             if (sub != null) BasicText(sub, style = ts(13f, Aura.Muted))
         }
-        if (selected) Icon(Ic.Check, Aura.Text, Modifier.size(22.dp))
+        Icon(Ic.Check, Aura.Text, Modifier.size(22.dp).graphicsLayer { alpha = sel; scaleX = .6f + .4f * sel; scaleY = .6f + .4f * sel })
     }
 }
 
 @Composable
-private fun Panel(content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().glassCard(RoundedCornerShape(24.dp)).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+private fun Panel(seen: MutableSet<Any>, key: String, content: @Composable () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().staggerIn(0, seen.add("panel-$key")).glassCard(RoundedCornerShape(24.dp)).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) { content() }
 }
 
 private fun fmtLast(raw: String, is24: Boolean): String {
@@ -159,7 +163,7 @@ fun SetupTab(
 
         item(key = "test-l") { SectionLabel("Test it") }
         item(key = "test") {
-            Panel {
+            Panel(seen, "test") {
                 BasicText("A real ring: sound, vibration and the lock-screen alarm. Snooze in a test lasts 10 seconds.", style = ts(13f, Aura.Muted))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     BigButton("Test alarm now", { AlarmReceiver.startRing(ctx, """{"l":"Test alarm","sz":5,"vb":1}""", true) }, Modifier.weight(1f), accent = true)
@@ -187,7 +191,7 @@ fun SetupTab(
 
         item(key = "rel-l") { SectionLabel("Reliability") }
         item(key = "rel") {
-            Panel {
+            Panel(seen, "rel") {
                 Row(Modifier.fillMaxWidth()) {
                     BasicText("Last fired", Modifier.weight(1f), style = ts(15f))
                     BasicText(if (lastFired.isEmpty()) "Never" else fmtLast(lastFired, is24), style = ts(15f, Aura.Muted, FontWeight.Bold))
@@ -235,7 +239,7 @@ fun SetupTab(
 
         item(key = "bed-l") { SectionLabel("Bedtime") }
         item(key = "bed") {
-            Panel {
+            Panel(seen, "bed") {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         BasicText("Wind-down reminder", style = ts(16f, weight = FontWeight.Bold))
@@ -258,7 +262,7 @@ fun SetupTab(
 
         item(key = "night-l") { SectionLabel("Night clock") }
         item(key = "night") {
-            Panel {
+            Panel(seen, "night") {
                 BasicText("A black screen with a dim red clock that drifts slowly. The screen stays on.", style = ts(13f, Aura.Muted))
                 BigButton("Open night clock", onNight, Modifier.fillMaxWidth())
             }
@@ -266,7 +270,7 @@ fun SetupTab(
 
         item(key = "bk-l") { SectionLabel("Backup") }
         item(key = "bk") {
-            Panel {
+            Panel(seen, "bk") {
                 BasicText("Alarms, cities, bedtime and settings as plain text. Keep it somewhere safe.", style = ts(13f, Aura.Muted))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     SoftButton(if (copied) "Copied" else "Copy", { clip().setPrimaryClip(ClipData.newPlainText("Aura backup", Backup.exportAll(ctx))); copied = true })

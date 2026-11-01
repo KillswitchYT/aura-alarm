@@ -101,7 +101,7 @@ fun HomeTab(
                     item(key = "search") { Box(Modifier.staggerIn(2, seen.add("search"))) { Search(query) { query = it } } }
                     if (shown.isEmpty()) item(key = "nomatch") { NoMatch(query) }
                     items(shown, key = { it.index }) { iv ->
-                        Box(Modifier.staggerIn(3 + iv.index, seen.add("row${iv.index}"))) {
+                        Box(Modifier.animateItem().staggerIn(3 + iv.index, seen.add("row${iv.index}"))) {
                             AlarmRow(iv.value, now, is24, { on -> onToggle(iv.index, on) }, { onOpen(iv.index) })
                         }
                     }

@@ -1,8 +1,10 @@
 package com.killswitch.aura.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -23,6 +25,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +44,10 @@ import androidx.compose.ui.unit.dp
 import com.kyant.shapes.Capsule
 
 /** Shared building blocks for the tabs, so every screen speaks the same visual language. */
+
+/** 0 to 1 and back, 200 ms, for anything that can be selected. Selection never snaps. */
+@Composable
+fun selectAnim(on: Boolean): State<Float> = animateFloatAsState(if (on) 1f else 0f, tween(200, easing = FastOutSlowInEasing), label = "select")
 
 @Composable
 fun PageTitle(title: String, sub: String? = null, modifier: Modifier = Modifier) {
@@ -78,8 +85,9 @@ fun BigButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, 
 
 @Composable
 fun ChipButton(text: String, selected: Boolean = false, onClick: () -> Unit) {
+    val sel by selectAnim(selected)
     Box(
-        Modifier.pressable(onClick).clip(Capsule()).background(if (selected) Aura.Selected else Color.White.copy(alpha = .08f))
+        Modifier.pressable(onClick).clip(Capsule()).background(Color.White.copy(alpha = .08f + .12f * sel))
             .padding(horizontal = 14.dp, vertical = 9.dp),
     ) { BasicText(text, style = ts(14f, Aura.Text, FontWeight.Bold)) }
 }

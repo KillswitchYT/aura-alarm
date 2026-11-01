@@ -103,7 +103,7 @@ fun WorldTab(rev: Int, now: Long, is24: Boolean, pad: PaddingValues, seen: Mutab
                     safe { WorldClock.dayLabel(c.zone, now) },
                     safe { WorldClock.offsetText(WorldClock.offsetMinutes(c.zone, now)) },
                 ).joinToString("  \u00B7  ")
-                Box(Modifier.staggerIn(2, seen.add("w-" + c.key))) {
+                Box(Modifier.animateItem().staggerIn(2, seen.add("w-" + c.key))) {
                     CityCard(c.name, sub, c.zone, now, is24, analog) {
                         val l = (saved ?: emptyList()).filter { it != c.key }
                         saved = l

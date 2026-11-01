@@ -93,7 +93,7 @@ fun StopwatchTab(rev: Int, pad: PaddingValues, seen: MutableSet<Any>) {
                     items(s.laps.indices.reversed().toList(), key = { it }) { i ->
                         val mark = s.mark(i)
                         Row(
-                            Modifier.fillMaxWidth().glassCard().padding(horizontal = 20.dp, vertical = 14.dp),
+                            Modifier.animateItem().fillMaxWidth().glassCard().padding(horizontal = 20.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {

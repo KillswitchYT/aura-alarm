@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -67,20 +68,22 @@ private fun Section(text: String) = BasicText(text, style = ts(13f, Aura.Muted, 
 
 @Composable
 private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
+    val sel by selectAnim(selected)
     Box(
         Modifier.pressable(onClick).clip(Capsule())
-            .background(if (selected) Aura.Selected else Color.White.copy(alpha = .08f))
+            .background(Color.White.copy(alpha = .08f + .12f * sel))
             .padding(horizontal = 14.dp, vertical = 9.dp),
     ) { BasicText(text, style = ts(14f, if (selected) Aura.Text else Aura.Text, FontWeight.Bold)) }
 }
 
 @Composable
 private fun DayDot(letter: String, on: Boolean, onClick: () -> Unit) {
+    val sel by selectAnim(on)
     Box(
         Modifier.size(38.dp).pressable(onClick).clip(CircleShape)
-            .background(if (on) Aura.Selected else Color.White.copy(alpha = .08f)),
+            .background(Color.White.copy(alpha = .08f + .12f * sel)),
         contentAlignment = Alignment.Center,
-    ) { BasicText(letter, style = ts(14f, if (on) Aura.Text else Aura.Muted, FontWeight.Bold)) }
+    ) { BasicText(letter, style = ts(14f, lerp(Aura.Muted, Aura.Text, sel), FontWeight.Bold)) }
 }
 
 @Composable

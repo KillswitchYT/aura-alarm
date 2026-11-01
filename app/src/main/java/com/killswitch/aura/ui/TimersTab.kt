@@ -108,7 +108,7 @@ fun TimersTab(rev: Int, now: Long, pad: PaddingValues, seen: MutableSet<Any>) {
             l == null -> items(2, key = { "skeleton$it" }) { SkeletonCard(2, 24) }
             l.isEmpty() -> item(key = "empty") { EmptyState(Ic.Timer, "No timers running", "Tap a preset or set a time above.") }
             else -> items(l, key = { it.id }) { t ->
-                Box(Modifier.staggerIn(1, seen.add("t-${t.id}"))) {
+                Box(Modifier.animateItem().staggerIn(1, seen.add("t-${t.id}"))) {
                     TimerCard(
                         t, now,
                         onDelete = { update(l.filter { it.id != t.id }) },
