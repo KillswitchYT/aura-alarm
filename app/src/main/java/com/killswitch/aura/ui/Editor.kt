@@ -67,23 +67,11 @@ import com.kyant.shapes.RoundedRectangle
 private fun Section(text: String) = BasicText(text, style = ts(13f, Aura.Muted, FontWeight.Bold))
 
 @Composable
-private fun Chip(text: String, selected: Boolean, onClick: () -> Unit) {
-    val sel by selectAnim(selected)
-    Box(
-        Modifier.pressable(onClick).clip(Capsule())
-            .background(Color.White.copy(alpha = .08f + .12f * sel))
-            .padding(horizontal = 14.dp, vertical = 9.dp),
-    ) { BasicText(text, style = ts(14f, if (selected) Aura.Text else Aura.Text, FontWeight.Bold)) }
-}
-
-@Composable
 private fun DayDot(letter: String, on: Boolean, onClick: () -> Unit) {
     val sel by selectAnim(on)
-    Box(
-        Modifier.size(38.dp).pressable(onClick).clip(CircleShape)
-            .background(Color.White.copy(alpha = .08f + .12f * sel)),
-        contentAlignment = Alignment.Center,
-    ) { BasicText(letter, style = ts(14f, lerp(Aura.Muted, Aura.Text, sel), FontWeight.Bold)) }
+    LiquidButton(onClick, glassBackdrop(), Modifier.size(38.dp), surfaceColor = Color.White.copy(alpha = .22f * sel), height = 38.dp, horizontalPadding = 0.dp) {
+        BasicText(letter, style = ts(14f, lerp(Aura.Muted, Aura.Text, sel), FontWeight.Bold))
+    }
 }
 
 @Composable
@@ -177,19 +165,13 @@ fun Editor(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BasicText(if (isNew) "New alarm" else "Edit alarm", Modifier.weight(1f), style = ts(20f, weight = FontWeight.ExtraBold))
-                Row(Modifier.pressable { pickTime() }.clip(Capsule()).background(Color.White.copy(alpha = .10f)).padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.Bottom) {
+                LiquidButton({ pickTime() }, glassBackdrop(), height = 56.dp) {
                     BasicText(fmtTime(h, time.substringAfter(':').toInt(), is24), style = ts(34f, Aura.Accent, FontWeight.ExtraBold, -1f))
-                    if (!is24) BasicText(" " + ampm(h), Modifier.padding(bottom = 5.dp), style = ts(14f, Aura.Muted, FontWeight.Bold))
+                    if (!is24) BasicText(ampm(h), style = ts(14f, Aura.Muted, FontWeight.Bold))
                 }
             }
 
-            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .07f)).padding(horizontal = 16.dp, vertical = 13.dp)) {
-                BasicTextField(
-                    label, { label = it }, Modifier.fillMaxWidth(), singleLine = true, textStyle = ts(16f),
-                    cursorBrush = SolidColor(Aura.Accent),
-                    decorationBox = { inner -> if (label.isEmpty()) BasicText("Label (optional)", style = ts(16f, Aura.Muted)); inner() },
-                )
-            }
+            LineField(label, { label = it }, "Label (optional)")
 
             Section("Repeat")
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -198,24 +180,24 @@ fun Editor(
                 }
             }
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(if (date.isEmpty()) "Pick a date" else "One-off on $date", date.isNotEmpty()) { pickDate() }
-                if (date.isNotEmpty()) Chip("Clear date", false) { date = "" }
+                ChipButton(if (date.isEmpty()) "Pick a date" else "One-off on $date", date.isNotEmpty()) { pickDate() }
+                if (date.isNotEmpty()) ChipButton("Clear date", false) { date = "" }
             }
 
             Section("Snooze")
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(0, 1, 5, 10, 15).forEach { m -> Chip(if (m == 0) "Off" else "$m min", snooze == m) { snooze = m } }
+                listOf(0, 1, 5, 10, 15).forEach { m -> ChipButton(if (m == 0) "Off" else "$m min", snooze == m) { snooze = m } }
             }
 
             Section("Wake-up challenge")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("None", "Math", "Shake").forEachIndexed { i, n -> Chip(n, challenge == i) { challenge = i } }
+                listOf("None", "Math", "Shake").forEachIndexed { i, n -> ChipButton(n, challenge == i) { challenge = i } }
             }
 
             Section("Sound")
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                sounds.forEach { (v, n) -> Chip(n, sound == v) { sound = v } }
-                Chip("Pick from phone", false) {
+                sounds.forEach { (v, n) -> ChipButton(n, sound == v) { sound = v } }
+                ChipButton("Pick from phone", false) {
                     pickSound.launch(Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
                         .putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
                         .putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false))
@@ -224,7 +206,7 @@ fun Editor(
 
             ToggleRow("Vibrate", vibrate, flat) { vibrate = it }
             ToggleRow("Fade in volume", gradual, flat) { gradual = it }
-            if (!isNew && days.isNotEmpty()) Chip("Skip the next ring", skipping) { skipping = !skipping }
+            if (!isNew && days.isNotEmpty()) ChipButton("Skip the next ring", skipping) { skipping = !skipping }
 
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (!isNew) Row(Modifier.pressable { leave(onDelete) }.padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

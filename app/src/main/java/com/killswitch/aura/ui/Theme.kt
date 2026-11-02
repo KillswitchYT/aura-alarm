@@ -37,6 +37,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.killswitch.aura.R
+import com.killswitch.aura.glass.LiquidButton
 import com.kyant.shapes.Capsule
 import kotlinx.coroutines.delay
 
@@ -126,7 +127,7 @@ fun Modifier.staggerIn(index: Int, play: Boolean = true): Modifier {
 /** The one filled button style in the app. */
 @Composable
 fun AccentPill(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier.pressable(onClick).clip(Capsule()).background(Aura.Accent).padding(horizontal = 22.dp, vertical = 13.dp)) {
+    LiquidButton(onClick, glassBackdrop(), modifier, tint = Aura.Accent) {
         BasicText(text, style = ts(15f, Aura.OnAccent, FontWeight.ExtraBold))
     }
 }

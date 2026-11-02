@@ -65,6 +65,7 @@ import com.killswitch.aura.Settings
 import com.killswitch.aura.Store
 import com.killswitch.aura.ampm
 import com.killswitch.aura.fmtTime
+import com.killswitch.aura.glass.LiquidSlider
 import com.killswitch.aura.glass.LiquidToggle
 import com.kyant.backdrop.backdrops.rememberCanvasBackdrop
 import kotlinx.coroutines.delay
@@ -136,6 +137,7 @@ fun SetupTab(
     var test by remember { mutableStateOf<List<Check>?>(null) }
     var testing by remember { mutableStateOf(false) }
     var av by remember(rev, bump) { mutableIntStateOf(Settings.alarmPercent(ctx)) }
+    LaunchedEffect(av) { if (av != Settings.alarmPercent(ctx)) { delay(350); Settings.setInt(ctx, "av", av); onChanged() } }
 
     // Backups are files. The system file picker does the saving and the opening, so the app needs no storage permission.
     var fileMsg by remember { mutableStateOf<Pair<String, Boolean>?>(null) } // text, is it good news
@@ -240,10 +242,13 @@ fun SetupTab(
                     BasicText("How loud it rings", Modifier.weight(1f), style = ts(16f, weight = FontWeight.Bold))
                     BasicText("$av%", style = ts(18f, if (Vol.ok(av)) Aura.Text else Aura.Rose, FontWeight.ExtraBold))
                 }
-                VolumeBar(
-                    Vol.fraction(av),
-                    { f -> val p = Vol.percent(f); if (p != av) av = p },
-                    { Settings.setInt(ctx, "av", av); onChanged() },
+                // The repo's slider. It reports every step while you drag; saving waits until you stop for a moment.
+                LiquidSlider(
+                    value = { av.toFloat() },
+                    onValueChange = { av = it.roundToInt().coerceIn(Vol.FLOOR, 100) },
+                    valueRange = Vol.FLOOR.toFloat()..100f,
+                    visibilityThreshold = 0.01f,
+                    backdrop = glassBackdrop(),
                 )
                 BasicText(
                     if (Vol.ok(av)) "Aura sets the phone's alarm volume to full when it rings and uses this on top. The phone's own sliders do not change it."
@@ -352,31 +357,5 @@ fun SetupTab(
                 Modifier.fillMaxWidth().padding(top = 8.dp), style = centered(ts(12f, Aura.Muted)),
             )
         }
-    }
-}
-
-/**
- * A flat volume bar: drag anywhere on it, or tap a spot. [onFraction] fires while the finger moves, [onDone] once when it lifts.
- * The callbacks are read fresh on every touch, so the bar keeps working after the screen has reloaded around it.
- */
-@Composable
-private fun VolumeBar(fraction: Float, onFraction: (Float) -> Unit, onDone: () -> Unit) {
-    var w by remember { mutableFloatStateOf(1f) }
-    val move by rememberUpdatedState(onFraction)
-    val done by rememberUpdatedState(onDone)
-    val thumb = 28.dp
-    Box(
-        Modifier.fillMaxWidth().height(48.dp).onSizeChanged { w = it.width.toFloat().coerceAtLeast(1f) }
-            .pointerInput(Unit) { detectTapGestures { o -> move((o.x / w).coerceIn(0f, 1f)); done() } }
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures(onDragEnd = { done() }, onDragCancel = { done() }) { change, _ ->
-                    change.consume(); move((change.position.x / w).coerceIn(0f, 1f))
-                }
-            },
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Box(Modifier.fillMaxWidth().height(6.dp).clip(Capsule()).background(Color.White.copy(alpha = .14f)))
-        Box(Modifier.fillMaxWidth(fraction).height(6.dp).clip(Capsule()).background(Aura.Accent))
-        Box(Modifier.size(thumb).graphicsLayer { translationX = (w - thumb.toPx()) * fraction }.clip(CircleShape).background(Aura.Text))
     }
 }

@@ -1,4 +1,4 @@
-// Adapted from Kyant0/AndroidLiquidGlass (Apache License 2.0). Package renamed, otherwise unchanged. See third_party/AndroidLiquidGlass-LICENSE.
+// Adapted from Kyant0/AndroidLiquidGlass (Apache License 2.0). Package renamed; height and horizontalPadding are new parameters whose defaults are the original values. See third_party/AndroidLiquidGlass-LICENSE.
 package com.killswitch.aura.glass
 
 import androidx.compose.foundation.LocalIndication
@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceAtMost
 import androidx.compose.ui.util.lerp
@@ -41,6 +42,8 @@ fun LiquidButton(
     isInteractive: Boolean = true,
     tint: Color = Color.Unspecified,
     surfaceColor: Color = Color.Unspecified,
+    height: Dp = 48f.dp,
+    horizontalPadding: Dp = 16f.dp,
     content: @Composable RowScope.() -> Unit
 ) {
     val animationScope = rememberCoroutineScope()
@@ -114,8 +117,8 @@ fun LiquidButton(
                     Modifier
                 }
             )
-            .height(48f.dp)
-            .padding(horizontal = 16f.dp),
+            .height(height)
+            .padding(horizontal = horizontalPadding),
         horizontalArrangement = Arrangement.spacedBy(8f.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
         content = content

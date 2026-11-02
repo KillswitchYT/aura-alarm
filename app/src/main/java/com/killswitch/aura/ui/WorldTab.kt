@@ -228,7 +228,7 @@ fun CityPicker(backdrop: Backdrop, now: Long, onPick: (City) -> Unit, onClose: (
                 BasicText("Add city", Modifier.weight(1f), style = ts(20f, weight = FontWeight.ExtraBold))
                 CloseButton({ leave(onClose) })
             }
-            Field(query, { query = it }, "Search city, country or region")
+            LineField(query, { query = it }, "Search city, country or region")
             when {
                 hits == null -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { SkeletonCard(2, 14); SkeletonCard(2, 14); SkeletonCard(2, 14) }
                 hits.isEmpty() -> NoResults("No match. Try a country, city or region.")

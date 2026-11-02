@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -93,6 +94,7 @@ fun AuraApp(reload: Int, startTab: Int) {
     val seenFor = remember { Array(TABS.size) { mutableSetOf<Any>() } }
     val is24 = Settings.is24(ctx)
     val backdrop = rememberLayerBackdrop()
+    val scene = rememberLayerBackdrop()
     val alarms = (state as? AlarmsState.Ready)?.list.orEmpty()
 
     // Real async read: the skeleton shows only if storage is slow, errors show only if the data is damaged.
@@ -199,7 +201,9 @@ fun AuraApp(reload: Int, startTab: Int) {
     Box(Modifier.fillMaxSize()) {
         // Everything inside this box is what the glass refracts.
         Box(Modifier.layerBackdrop(backdrop).fillMaxSize()) {
-            Canvas(Modifier.fillMaxSize()) { drawAuraScene() }
+            // The scene on its own, so controls inside a page refract the real background (the library's list demo does the same).
+            Box(Modifier.layerBackdrop(scene).fillMaxSize()) { Canvas(Modifier.fillMaxSize()) { drawAuraScene() } }
+            CompositionLocalProvider(LocalScene provides scene) {
             if (leaving >= 0) {
                 Box(Modifier.fillMaxSize().graphicsLayer {
                     alpha = 1f - slide.value; translationX = -dir * slide.value * size.width * reach
@@ -212,6 +216,7 @@ fun AuraApp(reload: Int, startTab: Int) {
                 scaleX = .95f + .05f * slide.value; scaleY = scaleX
                 compositingStrategy = CompositingStrategy.ModulateAlpha
             }) { page(shown) }
+            }
         }
 
         LiquidBottomTabs(

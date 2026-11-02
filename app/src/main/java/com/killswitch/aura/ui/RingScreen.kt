@@ -67,6 +67,12 @@ import com.killswitch.aura.Settings
 import com.killswitch.aura.ampm
 import com.killswitch.aura.fmtTime
 import com.killswitch.aura.glass.LiquidButton
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import androidx.compose.ui.graphics.BlendMode
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.shapes.Capsule
@@ -96,7 +102,7 @@ private fun DrawScope.drawPulses(p: Float, center: Offset) {
  * TalkBack gets a plain "Dismiss alarm" action instead of the drag.
  */
 @Composable
-private fun SlideToDismiss(text: String, onDone: () -> Unit, modifier: Modifier = Modifier) {
+private fun SlideToDismiss(text: String, backdrop: Backdrop, onDone: () -> Unit, modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
     val view = LocalView.current
     val density = LocalDensity.current
@@ -116,7 +122,8 @@ private fun SlideToDismiss(text: String, onDone: () -> Unit, modifier: Modifier 
     }
 
     Box(
-        modifier.fillMaxWidth().height(72.dp).clip(Capsule()).background(Color.White.copy(alpha = .10f))
+        modifier.fillMaxWidth().height(72.dp)
+            .drawBackdrop(backdrop = backdrop, shape = { Capsule() }, effects = { vibrancy(); blur(2f.dp.toPx()); lens(12f.dp.toPx(), 24f.dp.toPx()) })
             .onSizeChanged { track = it.width.toFloat() }
             .semantics { customActions = listOf(CustomAccessibilityAction("Dismiss alarm") { finish(); true }) }
             .pointerInput(max) {
@@ -135,7 +142,13 @@ private fun SlideToDismiss(text: String, onDone: () -> Unit, modifier: Modifier 
     ) {
         BasicText(text, Modifier.fillMaxWidth().padding(start = 52.dp).graphicsLayer { alpha = 1f - p * 1.5f }, style = centered(ts(17f, Aura.Muted, FontWeight.Bold)))
         Box(
-            Modifier.padding(6.dp).size(60.dp).graphicsLayer { translationX = x.value }.clip(CircleShape).background(Aura.Accent),
+            Modifier.padding(6.dp).size(60.dp).drawBackdrop(
+                backdrop = backdrop,
+                shape = { Capsule() },
+                effects = { vibrancy(); blur(2f.dp.toPx()); lens(12f.dp.toPx(), 24f.dp.toPx()) },
+                layerBlock = { translationX = x.value },
+                onDrawSurface = { drawRect(Aura.Accent, blendMode = BlendMode.Hue); drawRect(Aura.Accent.copy(alpha = 0.75f)) },
+            ),
             contentAlignment = Alignment.Center,
         ) { Icon(Ic.Chevron, Aura.OnAccent, Modifier.size(26.dp)) }
     }
@@ -233,7 +246,7 @@ fun RingScreen(
         ) {
             if (canSnooze) LiquidButton(onSnooze, backdrop, Modifier.fillMaxWidth()) { BasicText(snoozeText, style = ts(17f, weight = FontWeight.Bold)) }
             when (challenge) {
-                0 -> SlideToDismiss("Slide to dismiss", onDismiss)
+                0 -> SlideToDismiss("Slide to dismiss", backdrop, onDismiss)
                 1 -> LiquidButton({ submit() }, backdrop, Modifier.fillMaxWidth(), tint = Aura.Accent) {
                     BasicText("Check", style = ts(18f, Aura.OnAccent, FontWeight.ExtraBold))
                 }

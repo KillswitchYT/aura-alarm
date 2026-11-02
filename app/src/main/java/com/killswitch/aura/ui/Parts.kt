@@ -25,6 +25,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.rememberCanvasBackdrop
+import com.killswitch.aura.glass.LiquidButton
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,60 +65,49 @@ fun PageTitle(title: String, sub: String? = null, modifier: Modifier = Modifier)
 fun SectionLabel(text: String, modifier: Modifier = Modifier) =
     BasicText(text, modifier.padding(start = 4.dp, top = 8.dp), style = ts(13f, Aura.Muted, FontWeight.Bold))
 
-/** The quiet secondary button. The accent is kept for the one main action on a screen. */
+/**
+ * The layer glass controls on a page refract: the real scene behind the page, the same way the library's own list demo does it.
+ * Null inside sheets, where controls refract a flat sheet colour instead.
+ */
+val LocalScene = staticCompositionLocalOf<Backdrop?> { null }
+
+@Composable
+fun glassBackdrop(): Backdrop {
+    val flat = rememberCanvasBackdrop { drawRect(Aura.Lift2) }
+    return LocalScene.current ?: flat
+}
+
+/** The quiet secondary button: the library's glass, untinted. The accent is kept for the one main action on a screen. */
 @Composable
 fun SoftButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color = Aura.Text, enabled: Boolean = true) {
-    Box(
-        modifier.then(if (enabled) Modifier.pressable(onClick) else Modifier).clip(Capsule())
-            .background(Color.White.copy(alpha = if (enabled) .10f else .05f)).padding(horizontal = 18.dp, vertical = 11.dp),
-        contentAlignment = Alignment.Center,
-    ) { BasicText(text, style = ts(15f, if (enabled) color else Aura.Muted.copy(alpha = .5f), FontWeight.Bold)) }
+    LiquidButton(
+        if (enabled) onClick else ({}), glassBackdrop(), modifier.graphicsLayer { alpha = if (enabled) 1f else .45f },
+        isInteractive = enabled, height = 44.dp,
+    ) { BasicText(text, style = ts(15f, color, FontWeight.Bold)) }
 }
 
-/** A wide button with centred text. [accent] is the main action of the screen. */
+/** A wide button. [accent] is the main action of the screen and is tinted with the accent, like the New alarm button. */
 @Composable
 fun BigButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, accent: Boolean = false, enabled: Boolean = true) {
-    Box(
-        modifier.then(if (enabled) Modifier.pressable(onClick) else Modifier).clip(Capsule())
-            .background(if (accent) Aura.Accent else Color.White.copy(alpha = if (enabled) .10f else .05f)).padding(vertical = 16.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        BasicText(text, style = ts(17f, if (accent) Aura.OnAccent else if (enabled) Aura.Text else Aura.Muted.copy(alpha = .5f), FontWeight.ExtraBold))
-    }
+    LiquidButton(
+        if (enabled) onClick else ({}), glassBackdrop(), modifier.graphicsLayer { alpha = if (enabled) 1f else .45f },
+        isInteractive = enabled, tint = if (accent) Aura.Accent else Color.Unspecified, height = 56.dp,
+    ) { BasicText(text, style = ts(17f, if (accent) Aura.OnAccent else Aura.Text, FontWeight.ExtraBold)) }
 }
 
+/** A choice you can switch on. The selected one is a brighter glass, not a different colour. */
 @Composable
 fun ChipButton(text: String, selected: Boolean = false, onClick: () -> Unit) {
     val sel by selectAnim(selected)
-    Box(
-        Modifier.pressable(onClick).clip(Capsule()).background(Color.White.copy(alpha = .08f + .12f * sel))
-            .padding(horizontal = 14.dp, vertical = 9.dp),
-    ) { BasicText(text, style = ts(14f, Aura.Text, FontWeight.Bold)) }
+    LiquidButton(onClick, glassBackdrop(), surfaceColor = Color.White.copy(alpha = .22f * sel), height = 38.dp, horizontalPadding = 14.dp) {
+        BasicText(text, style = ts(14f, Aura.Text, FontWeight.Bold))
+    }
 }
 
 @Composable
 fun CloseButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier.size(36.dp).pressable(onClick).clip(CircleShape).background(Color.White.copy(alpha = .08f)), contentAlignment = Alignment.Center) {
+    LiquidButton(onClick, glassBackdrop(), modifier.size(36.dp), height = 36.dp, horizontalPadding = 0.dp) {
         Icon(Ic.Close, Aura.Muted, Modifier.size(16.dp))
-    }
-}
-
-@Composable
-fun Field(
-    value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier = Modifier,
-    number: Boolean = false, center: Boolean = false, onDone: () -> Unit = {},
-) {
-    val style: TextStyle = if (center) centered(ts(18f, weight = FontWeight.Bold)) else ts(16f)
-    Box(modifier.clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = .07f)).padding(horizontal = 16.dp, vertical = 13.dp)) {
-        BasicTextField(
-            value, onChange, Modifier.fillMaxWidth(), singleLine = true, textStyle = style, cursorBrush = SolidColor(Aura.Accent),
-            keyboardOptions = KeyboardOptions(keyboardType = if (number) KeyboardType.Number else KeyboardType.Text, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onDone() }),
-            decorationBox = { inner ->
-                if (value.isEmpty()) BasicText(hint, Modifier.fillMaxWidth(), style = if (center) centered(ts(18f, Aura.Muted, FontWeight.Medium)) else ts(16f, Aura.Muted))
-                inner()
-            },
-        )
     }
 }
 
