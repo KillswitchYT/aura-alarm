@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 
-enum class Ic { Alarm, World, Timer, Stopwatch, Setup, Plus, Chevron, Trash, Play, Alert, Search, Close, Pause, Check, Copy }
+enum class Ic { Alarm, World, Timer, Stopwatch, Setup, Plus, Chevron, Trash, Play, Alert, Search, Close, Pause, Check, Copy, Backspace }
 
 /** Tiny stroke icons drawn on a canvas, so the app needs no icon library. */
 @Composable
@@ -69,6 +69,11 @@ fun Icon(kind: Ic, color: Color, modifier: Modifier = Modifier.size(24.dp)) {
                 line(.5f, .42f, .5f, .62f); drawCircle(color, s * .04f, Offset(s * .5f, s * .74f))
             }
             Ic.Close -> { line(.25f, .25f, .75f, .75f); line(.75f, .25f, .25f, .75f) }
+            Ic.Backspace -> {
+                line(.14f, .5f, .34f, .27f); line(.34f, .27f, .86f, .27f); line(.86f, .27f, .86f, .73f)
+                line(.86f, .73f, .34f, .73f); line(.34f, .73f, .14f, .5f)
+                line(.48f, .41f, .68f, .59f); line(.68f, .41f, .48f, .59f)
+            }
             Ic.Pause -> { line(.36f, .2f, .36f, .8f); line(.64f, .2f, .64f, .8f) }
             Ic.Check -> { line(.2f, .52f, .42f, .74f); line(.42f, .74f, .8f, .28f) }
             Ic.Copy -> {

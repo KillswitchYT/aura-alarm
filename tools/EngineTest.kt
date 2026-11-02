@@ -230,6 +230,17 @@ fun main() {
     check("we never undo a change the person made", Vol.restoreTo(2, 15, 11) == null && Vol.restoreTo(2, 15, 3) == null)
     check("if we did not touch it, we do not restore it", Vol.restoreTo(5, -1, 9) == null && Vol.restoreTo(-1, 15, 15) == null && Vol.restoreTo(7, 7, 7) == null)
 
+    section("timer numpad")
+    check("5 0 0 reads 5 minutes", TimerEntry.push(TimerEntry.push(TimerEntry.push("", "5"), "0"), "0") == "500" && TimerEntry.parts("500") == Triple(0, 5, 0) && TimerEntry.seconds("500") == 300)
+    check("leading zeros do nothing", TimerEntry.push("", "0") == "" && TimerEntry.push("", "00") == "" && TimerEntry.push("", "007") == "7")
+    check("the 00 key adds two zeros once there is a digit", TimerEntry.push("5", "00") == "500" && TimerEntry.push("12", "00") == "1200")
+    check("six digits at most", TimerEntry.push("123456", "7") == "123456" && TimerEntry.push("12345", "67") == "123456")
+    check("backspace", TimerEntry.pop("500") == "50" && TimerEntry.pop("5") == "" && TimerEntry.pop("") == "")
+    check("typed as is, added up on Start", TimerEntry.parts("90") == Triple(0, 0, 90) && TimerEntry.seconds("90") == 90 && TimerEntry.seconds("1230") == 12 * 60 + 30)
+    check("hours too", TimerEntry.seconds("10000") == 3600 && TimerEntry.seconds("102030") == 10 * 3600 + 20 * 60 + 30)
+    check("empty is zero, huge is capped", TimerEntry.seconds("") == 0 && TimerEntry.seconds("999999") == 359_999)
+    check("non digits are ignored", TimerEntry.push("5", "a-") == "5")
+
     println("\n$total checks, ${total - bad} passed" + if (bad == 0) " - ALL PASSED" else ", $bad FAILED")
     if (bad != 0) System.exit(1)
 }

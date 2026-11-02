@@ -118,6 +118,26 @@ fun Field(
     }
 }
 
+/** A text field that is just a line, not a box. */
+@Composable
+fun LineField(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier = Modifier, onDone: () -> Unit = {}) {
+    Column(modifier) {
+        BasicTextField(
+            value, onChange, Modifier.fillMaxWidth().padding(vertical = 10.dp, horizontal = 2.dp), singleLine = true, textStyle = ts(16f),
+            cursorBrush = SolidColor(Aura.Accent), keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onDone() }),
+            decorationBox = { inner -> if (value.isEmpty()) BasicText(hint, style = ts(16f, Aura.Muted)); inner() },
+        )
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = .14f)))
+    }
+}
+
+/** A quiet action that is only words. */
+@Composable
+fun TextAction(text: String, onClick: () -> Unit, color: Color = Aura.Muted, modifier: Modifier = Modifier) {
+    Box(modifier.pressable(onClick).padding(horizontal = 8.dp, vertical = 10.dp)) { BasicText(text, style = ts(14f, color, FontWeight.Bold)) }
+}
+
 /** Empty state: says what this screen is for and offers the next step right there. Left aligned, no box. */
 @Composable
 fun EmptyState(icon: Ic, title: String, body: String, actionText: String? = null, onAction: () -> Unit = {}) {
