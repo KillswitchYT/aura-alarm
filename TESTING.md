@@ -19,6 +19,9 @@ Use Setup, Test alarm now, then the real thing below.
 - [ ] Install a new build while a snooze is waiting: it still rings (new).
 - [ ] Math challenge (3 sums): wrong answer gives a new sum, right ones count, only the third one dismisses.
 - [ ] Shake challenge: 25 shakes dismisses. Phone still on the lock screen while you shake.
+- [ ] Alarm volume: Setup, Alarm volume. Drag it low, tap Play a test: quiet. Drag it high, test again: clearly louder. (The Ringtone and Media sliders must NOT change it.)
+- [ ] While a test is ringing, press the phone's volume up/down: the on-screen slider says Alarm, and the sound follows. After you dismiss, the volume you ended on is kept (it is not put back).
+- [ ] Sound check in Setup goes off when the alarm volume is under 60%, and its Fix raises it to a loud level by itself.
 - [ ] Volume buttons while ringing for each of the 4 settings (Setup). With a challenge on, "Dismiss" must NOT dismiss.
 - [ ] Leave one ringing untouched: it stops by itself after 10 minutes.
 

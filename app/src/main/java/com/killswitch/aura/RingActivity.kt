@@ -1,6 +1,7 @@
 package com.killswitch.aura
 
 import android.content.Intent
+import android.media.AudioManager
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.WindowManager
@@ -28,6 +29,7 @@ class RingActivity : ComponentActivity() {
     private var solved = false
 
     override fun onCreate(b: Bundle?) {
+        volumeControlStream = AudioManager.STREAM_ALARM // otherwise the buttons change the ringtone volume and the alarm stays quiet
         super.onCreate(b)
         cur = this
         enableEdgeToEdge(

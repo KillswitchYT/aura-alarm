@@ -34,6 +34,7 @@ class RingService : Service() {
     private var wl: PowerManager.WakeLock? = null
     private var au: AudioManager? = null
     private var origVol = -1
+    private var forced = -1 // the volume we set ourselves (-1 if we left it alone)
     private var cfg = JSONObject()
     private var cfgStr = "{}"
     private var label = "Alarm"
@@ -139,9 +140,10 @@ class RingService : Service() {
         val gradual = if (cfg.has("gr")) cfg.optInt("gr") == 1 else ro == 0
         val max = a.getStreamMaxVolume(AudioManager.STREAM_ALARM)
         origVol = a.getStreamVolume(AudioManager.STREAM_ALARM)
+        forced = -1
         try {
-            if (ro == 2) a.setStreamVolume(AudioManager.STREAM_ALARM, max, 0)
-            else if (origVol == 0) a.setStreamVolume(AudioManager.STREAM_ALARM, maxOf(1, max / 2), 0)
+            if (ro == 2) { a.setStreamVolume(AudioManager.STREAM_ALARM, max, 0); forced = a.getStreamVolume(AudioManager.STREAM_ALARM) }
+            else if (origVol == 0) { a.setStreamVolume(AudioManager.STREAM_ALARM, maxOf(1, max / 2), 0); forced = a.getStreamVolume(AudioManager.STREAM_ALARM) }
         } catch (e: Exception) { }
         wl = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "aura:ring").also { it.acquire(600_000L) }
         val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
@@ -193,9 +195,12 @@ class RingService : Service() {
         try { rt?.stop() } catch (e: Exception) { }
         rt = null
         vib?.cancel(); vib = null
-        if (origVol >= 0) {
-            try { au?.setStreamVolume(AudioManager.STREAM_ALARM, origVol, 0) } catch (e: Exception) { }
-            origVol = -1
+        if (origVol >= 0 || forced >= 0) {
+            try {
+                val now = au?.getStreamVolume(AudioManager.STREAM_ALARM) ?: -1
+                Vol.restoreTo(origVol, forced, now)?.let { au?.setStreamVolume(AudioManager.STREAM_ALARM, it, 0) }
+            } catch (e: Exception) { }
+            origVol = -1; forced = -1
         }
         try { if (wl?.isHeld == true) wl?.release() } catch (e: Exception) { }
         wl = null

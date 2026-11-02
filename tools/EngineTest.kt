@@ -219,6 +219,17 @@ fun main() {
         check("a failing re-arm is reported, not thrown", log == listOf("remember", "err"))
     }
 
+    section("alarm volume")
+    check("60 percent and up counts as loud enough", Vol.ok(9, 15) && Vol.ok(15, 15) && Vol.ok(5, 7))
+    check("a whisper does not", !Vol.ok(1, 15) && !Vol.ok(0, 15) && !Vol.ok(8, 15) && !Vol.ok(3, 7) && !Vol.ok(5, 0))
+    check("slider positions map to steps", Vol.step(0f, 15) == 0 && Vol.step(1f, 15) == 15 && Vol.step(.5f, 15) == 8 && Vol.step(7f, 15) == 15 && Vol.step(-1f, 15) == 0)
+    check("fraction is the inverse and safe", Vol.fraction(15, 15) == 1f && Vol.fraction(0, 15) == 0f && Vol.fraction(3, 0) == 0f)
+    check("the fix sets a loud level, not the very top", Vol.recommended(15) == 12 && Vol.recommended(7) == 6 && Vol.recommended(1) == 1 && Vol.recommended(15) < 15)
+    check("the fix always passes the sound check", (1..30).all { Vol.ok(Vol.recommended(it), it) })
+    check("we give volume back if the ring moved it and nobody touched it", Vol.restoreTo(2, 15, 15) == 2 && Vol.restoreTo(0, 7, 7) == 0)
+    check("we never undo a change the person made", Vol.restoreTo(2, 15, 11) == null && Vol.restoreTo(2, 15, 3) == null)
+    check("if we did not touch it, we do not restore it", Vol.restoreTo(5, -1, 9) == null && Vol.restoreTo(-1, 15, 15) == null && Vol.restoreTo(7, 7, 7) == null)
+
     println("\n$total checks, ${total - bad} passed" + if (bad == 0) " - ALL PASSED" else ", $bad FAILED")
     if (bad != 0) System.exit(1)
 }

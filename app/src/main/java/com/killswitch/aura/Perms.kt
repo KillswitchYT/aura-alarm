@@ -24,14 +24,14 @@ object Perms {
         "Never sleeping app" to "Samsung: exempt from sleeping apps",
         "Battery: Unrestricted" to "Stops Android killing the alarm",
         "Do Not Disturb" to "Allow alarms through",
-        "Sound check" to "Alarm volume up, Bluetooth off",
+        "Sound check" to "Alarm volume ${Vol.MIN_PERCENT}% or more, Bluetooth off",
     )
 
     val FIXES = listOf(
         Fix("rf", "Re-arm all alarms", "Reschedule every alarm and backup"),
         Fix("lk", "Check exact-alarm access", "Verify Alarms & reminders"),
         Fix("ph", "Open Samsung sleeping apps", "Jump to Never sleeping apps"),
-        Fix("vo", "Reset sound check", "Re-test volume, DND and Bluetooth"),
+        Fix("vo", "Raise alarm volume", "Set it to a loud level, or open Bluetooth if that is the problem"),
     )
 
     /** Order matches the Setup tab: 0 exact alarms, 1 notifications, 2 full-screen, 3 samsung (manual), 4 battery, 5 DND, 6 sound. */
@@ -45,7 +45,7 @@ object Perms {
             Store.get(c, "samsungOk") == "1",
             c.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(c.packageName),
             nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_NONE,
-            au.getStreamVolume(AudioManager.STREAM_ALARM) > 0 && !btOut(au),
+            Vol.ok(au.getStreamVolume(AudioManager.STREAM_ALARM), au.getStreamMaxVolume(AudioManager.STREAM_ALARM)) && !btOut(au),
         )
         return TEXT.mapIndexed { i, t -> Check(t.first, t.second, ok[i]) }
     }
@@ -73,7 +73,13 @@ object Perms {
             3 -> samsung(a)
             4 -> go(a, Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pk))
             5 -> go(a, Intent("android.settings.ZEN_MODE_SETTINGS"))
-            else -> go(a, Intent(Settings.ACTION_SOUND_SETTINGS))
+            else -> {
+                // Samsung hides the alarm slider in Sound settings, so raise it right here. Bluetooth has to be dealt with by hand.
+                val au = a.getSystemService(AudioManager::class.java)
+                if (btOut(au)) go(a, Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+                else try { au.setStreamVolume(AudioManager.STREAM_ALARM, Vol.recommended(au.getStreamMaxVolume(AudioManager.STREAM_ALARM)), 0) }
+                catch (e: Exception) { go(a, Intent(Settings.ACTION_SOUND_SETTINGS)) }
+            }
         }
     }
 

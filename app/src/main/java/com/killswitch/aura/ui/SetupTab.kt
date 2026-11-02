@@ -1,5 +1,17 @@
 package com.killswitch.aura.ui
 
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.draw.clip
+import com.kyant.shapes.Capsule
+import android.media.AudioManager
+import com.killswitch.aura.Vol
+import kotlin.math.roundToInt
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -127,6 +139,9 @@ fun SetupTab(
     val parsed = remember(backupText) { if (backupText.isBlank()) null else Backup.parse(backupText) }
 
     fun clip() = ctx.getSystemService(ClipboardManager::class.java)
+    val au = remember { ctx.getSystemService(AudioManager::class.java) }
+    val maxVol = remember { au.getStreamMaxVolume(AudioManager.STREAM_ALARM) }
+    var vol by remember(rev, bump) { mutableIntStateOf(au.getStreamVolume(AudioManager.STREAM_ALARM)) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = pad, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item(key = "head") {
@@ -166,7 +181,7 @@ fun SetupTab(
             Panel(seen, "test") {
                 BasicText("A real ring: sound, vibration and the lock-screen alarm. Snooze in a test lasts 10 seconds.", style = ts(13f, Aura.Muted))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    BigButton("Test alarm now", { AlarmReceiver.startRing(ctx, """{"l":"Test alarm","sz":5,"vb":1}""", true) }, Modifier.weight(1f), accent = true)
+                    BigButton("Test alarm now", { AlarmReceiver.startRing(ctx, """{"l":"Test alarm","sz":5,"vb":1,"gr":0}""", true) }, Modifier.weight(1f), accent = true)
                     BigButton(if (testing) "Running" else "Self-test", {
                         if (!testing) scope.launch {
                             testing = true; test = emptyList()
@@ -204,6 +219,27 @@ fun SetupTab(
                     BasicText("The last alarm only rang because its backup fired. Check the protections above.", style = ts(13f, Aura.Rose, FontWeight.Bold))
                     SoftButton("Clear", { Store.set(ctx, "missed", "0"); bump++; onChanged() })
                 }
+            }
+        }
+
+        item(key = "avol-l") { SectionLabel("Alarm volume") }
+        item(key = "avol") {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BasicText("How loud it rings", Modifier.weight(1f), style = ts(16f, weight = FontWeight.Bold))
+                    BasicText("$vol of $maxVol", style = ts(15f, if (Vol.ok(vol, maxVol)) Aura.Muted else Aura.Rose, FontWeight.Bold))
+                }
+                VolumeBar(
+                    Vol.fraction(vol, maxVol),
+                    { f -> val s = Vol.step(f, maxVol); if (s != vol) { vol = s; try { au.setStreamVolume(AudioManager.STREAM_ALARM, s, 0) } catch (e: Exception) { } } },
+                    { onChanged() },
+                )
+                BasicText(
+                    if (Vol.ok(vol, maxVol)) "This is the alarm's own volume. The Ringtone and Media sliders do not change it."
+                    else "Quiet. Below ${Vol.MIN_PERCENT}% is easy to sleep through, and the Sound check stays off.",
+                    style = ts(13f, if (Vol.ok(vol, maxVol)) Aura.Muted else Aura.Rose),
+                )
+                Row { SoftButton("Play a test", { AlarmReceiver.startRing(ctx, """{"l":"Test alarm","sz":5,"vb":1,"gr":0}""", true) }) }
             }
         }
 
@@ -306,5 +342,26 @@ fun SetupTab(
                 Modifier.fillMaxWidth().padding(top = 8.dp), style = centered(ts(12f, Aura.Muted)),
             )
         }
+    }
+}
+
+/** A flat volume bar: drag anywhere on it, or tap a spot. Reports every position while moving, and once more when the finger lifts. */
+@Composable
+private fun VolumeBar(fraction: Float, onFraction: (Float) -> Unit, onDone: () -> Unit) {
+    var w by remember { mutableFloatStateOf(1f) }
+    val thumb = 28.dp
+    Box(
+        Modifier.fillMaxWidth().height(48.dp).onSizeChanged { w = it.width.toFloat().coerceAtLeast(1f) }
+            .pointerInput(Unit) { detectTapGestures { o -> onFraction((o.x / w).coerceIn(0f, 1f)); onDone() } }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(onDragEnd = { onDone() }, onDragCancel = { onDone() }) { change, _ ->
+                    change.consume(); onFraction((change.position.x / w).coerceIn(0f, 1f))
+                }
+            },
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(Modifier.fillMaxWidth().height(6.dp).clip(Capsule()).background(Color.White.copy(alpha = .14f)))
+        Box(Modifier.fillMaxWidth(fraction).height(6.dp).clip(Capsule()).background(Aura.Accent))
+        Box(Modifier.size(thumb).graphicsLayer { translationX = (w - thumb.toPx()) * fraction }.clip(CircleShape).background(Aura.Text))
     }
 }
