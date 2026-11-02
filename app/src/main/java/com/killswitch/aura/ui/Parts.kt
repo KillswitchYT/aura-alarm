@@ -36,6 +36,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -48,6 +50,11 @@ import androidx.compose.ui.unit.dp
 import com.kyant.shapes.Capsule
 
 /** Shared building blocks for the tabs, so every screen speaks the same visual language. */
+
+/** A faint line along the top edge. Rows are told apart by this and by spacing, never by a box around each one. */
+fun Modifier.topHairline(): Modifier = drawBehind {
+    drawLine(Color.White.copy(alpha = .07f), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx())
+}
 
 /** 0 to 1 and back, 200 ms, for anything that can be selected. Selection never snaps. */
 @Composable

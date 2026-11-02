@@ -64,12 +64,12 @@ fun StopwatchTab(rev: Int, pad: PaddingValues, seen: MutableSet<Any>) {
             else -> {
                 item(key = "clock") {
                     Column(
-                        Modifier.fillMaxWidth().staggerIn(0, seen.add("sw-clock")).glassCard().padding(horizontal = 20.dp, vertical = 28.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(22.dp),
+                        Modifier.fillMaxWidth().staggerIn(0, seen.add("sw-clock")).padding(horizontal = 4.dp, vertical = 20.dp),
+                        horizontalAlignment = Alignment.Start, verticalArrangement = Arrangement.spacedBy(22.dp),
                     ) {
                         BasicText(
                             Stopwatch.fmt(s.elapsed(if (running) frame else System.currentTimeMillis())),
-                            style = centered(ts(56f, if (running) Aura.Text else Aura.Muted, FontWeight.Bold, -2f)),
+                            style = ts(64f, if (running) Aura.Text else Aura.Muted, FontWeight.Bold, -2f),
                         )
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             BigButton(s.secondaryLabel(), { apply(s.lapOrReset(System.currentTimeMillis())) }, Modifier.weight(1f), enabled = s.running || s.acc > 0)
@@ -93,7 +93,7 @@ fun StopwatchTab(rev: Int, pad: PaddingValues, seen: MutableSet<Any>) {
                     items(s.laps.indices.reversed().toList(), key = { it }) { i ->
                         val mark = s.mark(i)
                         Row(
-                            Modifier.animateItem().fillMaxWidth().glassCard().padding(horizontal = 20.dp, vertical = 14.dp),
+                            Modifier.animateItem().fillMaxWidth().topHairline().padding(horizontal = 4.dp, vertical = 14.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {

@@ -79,3 +79,11 @@ Use Setup, Test alarm now, then the real thing below.
 ## 9. Things I could not make easy to test
 - The fallback ring (when Android refuses to start the ring service) is almost impossible to trigger on purpose. It is compile-checked and its text is unit-tested, nothing more.
 - Battery cost of the clock ring on Home is not measured. It redraws 30 times a second while Home is open and the screen is on, and the glass bar behind it redraws with it. Nothing runs when the app is closed or while an alarm rings. If the phone gets warm with Home open, say so.
+
+## 10. Look and glass (after the no-boxes pass)
+- [ ] Every button, chip, close icon, toggle, slider and the dismiss slide is the same glass family (rim highlight, slight blur). Nothing looks like a flat grey pill next to the glass ones.
+- [ ] Alarms, World, Timers, Stopwatch and Setup have no boxes around rows. Rows are separated by faint lines.
+- [ ] Setup: with 7 of 7 protections on, the seven rows fold into one "All 7 protections are on" row; tap it to open them, "Hide" folds them again. Turn one protection off in system settings: they unfold by themselves.
+- [ ] Setup alarm volume slider (the library one) is apricot, not purple, and moves smoothly; the percent next to it follows.
+- [ ] Open the alarm editor and the city picker: chips, day letters and the time button inside the sheet are glass too.
+- [ ] Scroll the Setup tab and switch tabs: does anything stutter more than before? The ms meter at the bottom of Setup says how bad.

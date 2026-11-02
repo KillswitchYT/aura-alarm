@@ -47,6 +47,7 @@ import com.killswitch.aura.City
 import com.killswitch.aura.Settings
 import com.killswitch.aura.WorldClock
 import com.killswitch.aura.ampm
+import com.killswitch.aura.glass.LiquidButton
 import com.killswitch.aura.fmtTime
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
@@ -103,7 +104,7 @@ fun WorldTab(rev: Int, now: Long, is24: Boolean, pad: PaddingValues, seen: Mutab
                     safe { WorldClock.dayLabel(c.zone, now) },
                     safe { WorldClock.offsetText(WorldClock.offsetMinutes(c.zone, now)) },
                 ).joinToString("  \u00B7  ")
-                Box(Modifier.animateItem().staggerIn(2, seen.add("w-" + c.key))) {
+                Box(Modifier.animateItem().staggerIn(2, seen.add("w-" + c.key)).topHairline()) {
                     CityCard(c.name, sub, c.zone, now, is24, analog) {
                         val l = (saved ?: emptyList()).filter { it != c.key }
                         saved = l
@@ -121,9 +122,9 @@ private inline fun safe(f: () -> String): String = try { f() } catch (e: Excepti
 @Composable
 private fun CityCard(name: String, sub: String, zone: String?, now: Long, is24: Boolean, analog: Boolean, onRemove: (() -> Unit)?) {
     val hms = zone?.let { try { WorldClock.hms(it, now) } catch (e: Exception) { null } }
-    Row(Modifier.fillMaxWidth().glassCard().padding(horizontal = 20.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            BasicText(name, style = ts(18f, weight = FontWeight.Bold))
+            BasicText(name, style = ts(20f, weight = FontWeight.Bold))
             BasicText(if (hms == null) "Unknown time zone" else sub, style = ts(13f, if (hms == null) Aura.Rose else Aura.Muted))
         }
         if (hms != null) {
@@ -163,19 +164,15 @@ private fun Converter(
     val ctx = LocalContext.current
     val h = minutes / 60
     val m = minutes % 60
-    Column(Modifier.fillMaxWidth().glassCard().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.fillMaxWidth().padding(top = 16.dp).topHairline().padding(horizontal = 4.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            BasicText("Time converter", Modifier.weight(1f), style = ts(18f, weight = FontWeight.ExtraBold))
+            BasicText("Time converter", Modifier.weight(1f), style = ts(20f, weight = FontWeight.ExtraBold))
             if (!following) SoftButton("Now", onNow)
         }
         BasicText("Your time", style = ts(13f, Aura.Muted, FontWeight.Bold))
-        Row(
-            Modifier.pressable { TimePickerDialog(ctx, { _, hh, mm -> onPick(hh * 60 + mm) }, h, m, is24).show() }
-                .clip(Capsule()).background(Color.White.copy(alpha = .10f)).padding(horizontal = 18.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
+        LiquidButton({ TimePickerDialog(ctx, { _, hh, mm -> onPick(hh * 60 + mm) }, h, m, is24).show() }, glassBackdrop(), height = 56.dp) {
             BasicText(fmtTime(h, m, is24), style = ts(30f, Aura.Accent, FontWeight.ExtraBold, -1f))
-            if (!is24) BasicText(" " + ampm(h), Modifier.padding(bottom = 4.dp), style = ts(13f, Aura.Muted, FontWeight.Bold))
+            if (!is24) BasicText(ampm(h), style = ts(13f, Aura.Muted, FontWeight.Bold))
         }
         cities.forEach { c ->
             val t = try { WorldClock.converted(c.zone, h, m) } catch (e: Exception) { null }

@@ -82,8 +82,7 @@ private fun Stag(i: Int, key: String, seen: MutableSet<Any>, content: @Composabl
 private fun Choice(title: String, sub: String?, selected: Boolean, onClick: () -> Unit) {
     val sel by selectAnim(selected)
     Row(
-        Modifier.fillMaxWidth().pressable(onClick).glassCard(RoundedCornerShape(24.dp))
-            .background(Color.White.copy(alpha = .08f * sel)).padding(horizontal = 20.dp, vertical = 14.dp),
+        Modifier.fillMaxWidth().pressable(onClick).topHairline().padding(horizontal = 4.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -97,7 +96,7 @@ private fun Choice(title: String, sub: String?, selected: Boolean, onClick: () -
 @Composable
 private fun Panel(seen: MutableSet<Any>, key: String, content: @Composable () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().staggerIn(0, seen.add("panel-$key")).glassCard(RoundedCornerShape(24.dp)).padding(20.dp),
+        Modifier.fillMaxWidth().staggerIn(0, seen.add("panel-$key")).padding(horizontal = 4.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) { content() }
 }
@@ -136,6 +135,7 @@ fun SetupTab(
 
     var test by remember { mutableStateOf<List<Check>?>(null) }
     var testing by remember { mutableStateOf(false) }
+    var showChecks by remember { mutableStateOf(false) }
     var av by remember(rev, bump) { mutableIntStateOf(Settings.alarmPercent(ctx)) }
     LaunchedEffect(av) { if (av != Settings.alarmPercent(ctx)) { delay(350); Settings.setInt(ctx, "av", av); onChanged() } }
 
@@ -166,26 +166,41 @@ fun SetupTab(
                 Icon(Ic.Check, Aura.Mint, Modifier.size(28.dp).graphicsLayer { alpha = tick; scaleX = .6f + .4f * tick; scaleY = .6f + .4f * tick })
             }
         }
-        items(checks.withIndex().toList(), key = { "check${it.index}" }) { iv ->
-            Stag(iv.index.coerceAtMost(6), "check${iv.index}", seen) {
-                Row(Modifier.fillMaxWidth().glassCard(RoundedCornerShape(24.dp)).padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        BasicText(iv.value.title, style = ts(16f, weight = FontWeight.Bold))
-                        BasicText(iv.value.hint, style = ts(13f, Aura.Muted))
+        // When everything is on there is nothing to read, so the seven rows fold into one. Anything that goes off unfolds them again.
+        if (all && !showChecks) item(key = "allok") {
+            Row(Modifier.fillMaxWidth().pressable { showChecks = true }.padding(horizontal = 4.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Ic.Check, Aura.Mint, Modifier.size(24.dp))
+                Spacer(Modifier.size(12.dp))
+                Column(Modifier.weight(1f)) {
+                    BasicText("All ${checks.size} protections are on", style = ts(16f, weight = FontWeight.Bold))
+                    BasicText("Tap to see them", style = ts(13f, Aura.Muted))
+                }
+                Icon(Ic.Chevron, Aura.Muted, Modifier.size(22.dp))
+            }
+        } else {
+            items(checks.withIndex().toList(), key = { "check${it.index}" }) { iv ->
+                Stag(iv.index.coerceAtMost(6), "check${iv.index}", seen) {
+                    Row(Modifier.fillMaxWidth().topHairline().padding(horizontal = 4.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            BasicText(iv.value.title, style = ts(16f, weight = FontWeight.Bold))
+                            BasicText(iv.value.hint, style = ts(13f, Aura.Muted))
+                        }
+                        if (iv.value.ok) BasicText("On", style = ts(15f, Aura.Mint, FontWeight.Bold))
+                        else Box(Modifier.pressable { onFix(iv.index) }.padding(8.dp)) { BasicText("Fix", style = ts(15f, Aura.Accent, FontWeight.ExtraBold)) }
                     }
-                    if (iv.value.ok) BasicText("On", style = ts(15f, Aura.Mint, FontWeight.Bold))
-                    else Box(Modifier.pressable { onFix(iv.index) }.padding(8.dp)) { BasicText("Fix", style = ts(15f, Aura.Accent, FontWeight.ExtraBold)) }
                 }
             }
+            if (all) item(key = "hide") { TextAction("Hide", { showChecks = false }) }
         }
 
         item(key = "fixes-l") { SectionLabel("Fixes") }
         items(Perms.FIXES, key = { "fix-" + it.id }) { f ->
-            Row(Modifier.fillMaxWidth().pressable { onRunFix(f.id) }.glassCard(RoundedCornerShape(24.dp)).padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().pressable { onRunFix(f.id) }.topHairline().padding(horizontal = 4.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     BasicText(f.title, style = ts(16f, weight = FontWeight.Bold))
                     BasicText(f.hint, style = ts(13f, Aura.Muted))
                 }
+                Icon(Ic.Chevron, Aura.Muted, Modifier.size(22.dp))
             }
         }
 

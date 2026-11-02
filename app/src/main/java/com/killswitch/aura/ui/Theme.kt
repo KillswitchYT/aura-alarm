@@ -90,12 +90,6 @@ private val EdgeLight = Brush.linearGradient(
     listOf(Color.White.copy(alpha = .30f), Color.White.copy(alpha = .05f), Color.White.copy(alpha = .03f), Color.White.copy(alpha = .12f))
 )
 
-/** A frosted card for list content: translucent fill and a thin rim that catches light from the top-left. */
-fun Modifier.glassCard(shape: Shape = RoundedCornerShape(28.dp)): Modifier = this
-    .clip(shape)
-    .background(Brush.linearGradient(listOf(Color.White.copy(alpha = .10f), Color.White.copy(alpha = .04f))))
-    .border(1.dp, EdgeLight, shape)
-
 @Composable
 fun rememberTick(): () -> Unit {
     val haptic = LocalHapticFeedback.current
