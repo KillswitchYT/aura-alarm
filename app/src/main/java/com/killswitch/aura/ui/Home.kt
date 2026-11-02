@@ -257,8 +257,9 @@ private fun AlarmRow(a: Alarm, now: Long, is24: Boolean, isNext: Boolean, onTogg
     val on by selectAnim(a.on)
     val nxt by selectAnim(isNext)
     val timeColor = lerp(lerp(Aura.Muted.copy(alpha = .55f), Aura.Text, on), Aura.Accent, nxt)
-    Row(Modifier.fillMaxWidth().pressable(onOpen).padding(horizontal = 4.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
+    // Only the time and details open the editor. The toggle sits beside them, not inside the tappable area, so a tap on it only switches the alarm.
+    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).pressable(onOpen).padding(vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.Bottom) {
                 BasicText(fmtTime(a.hour, a.minute, is24), style = ts(44f, timeColor, FontWeight.Bold, -1.5f))
                 if (!is24) BasicText(" " + ampm(a.hour), Modifier.padding(bottom = 7.dp), style = ts(14f, Aura.Muted, FontWeight.Bold))
@@ -269,6 +270,7 @@ private fun AlarmRow(a: Alarm, now: Long, is24: Boolean, isNext: Boolean, onTogg
                 style = ts(13f, Aura.Muted),
             )
         }
+        Spacer(Modifier.width(12.dp))
         LiquidToggle(selected = { a.on }, onSelect = onToggle, backdrop = flat)
     }
 }

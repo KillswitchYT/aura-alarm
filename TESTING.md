@@ -36,7 +36,8 @@ Use Setup, Test alarm now, then the real thing below.
 - [ ] Pick a phone sound: the sheet shows its real name, not "Phone sound". Reopen the alarm, the name is still there.
 - [ ] Pick a date: the alarm becomes "One-off on <date>", repeat days clear. Pick a day after: the date clears.
 - [ ] Skip next ring on a repeating alarm: the next ring moves one day on.
-- [ ] Toggle, delete, search, "no match" state, empty state.
+- [ ] Tapping an alarm's toggle only switches it on or off and does NOT open the editor. Tapping the time or details opens the editor.
+- [ ] Delete, search (with 5 or more alarms), the All / On / Off chips (with 3 or more), "no match" state, empty state.
 - [ ] Editor Test button rings the alarm as configured (with its challenge).
 
 ## 4. World
