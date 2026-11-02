@@ -40,6 +40,9 @@ object Settings {
     fun volumeButtons(c: Context) = str(c, "vbtn", "vol")
     /** 0 gentle ramp, 1 standard, 2 max volume and vibrate with no snooze. */
     fun ringStyle(c: Context) = int(c, "ro", 1)
+
+    /** The app's own alarm volume, 1% steps. 100 until the person lowers it. */
+    fun alarmPercent(c: Context) = int(c, "av", 100).coerceIn(Vol.FLOOR, 100)
     fun analogWorld(c: Context) = int(c, "wa", 0) == 1
 
     fun bed(c: Context): Bed = try { Bed.from(JSONObject(Store.get(c, "bed").ifEmpty { "{}" })) } catch (e: Exception) { Bed() }

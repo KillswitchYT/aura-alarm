@@ -44,12 +44,13 @@ class RingService : Service() {
     private var test = false
     private var ringing = false
     private var t0 = 0L
+    private var gain = 1f // the player volume that the alarm volume setting asks for
 
     private val ramp = object : Runnable {
         override fun run() {
             val p = mp ?: return
             val v = minOf(1f, (System.currentTimeMillis() - t0) / 30_000f)
-            try { p.setVolume(v, v) } catch (e: Exception) { }
+            try { p.setVolume(v * gain, v * gain) } catch (e: Exception) { }
             if (v < 1f) h.postDelayed(this, 500)
         }
     }
@@ -141,9 +142,10 @@ class RingService : Service() {
         val max = a.getStreamMaxVolume(AudioManager.STREAM_ALARM)
         origVol = a.getStreamVolume(AudioManager.STREAM_ALARM)
         forced = -1
+        // The phone's alarm slider is coarse and hidden on Samsung, so the ring always starts from full and the app's own percent does the rest.
+        gain = if (ro == 2) 1f else Vol.gain(Settings.alarmPercent(this))
         try {
-            if (ro == 2) { a.setStreamVolume(AudioManager.STREAM_ALARM, max, 0); forced = a.getStreamVolume(AudioManager.STREAM_ALARM) }
-            else if (origVol == 0) { a.setStreamVolume(AudioManager.STREAM_ALARM, maxOf(1, max / 2), 0); forced = a.getStreamVolume(AudioManager.STREAM_ALARM) }
+            if (origVol != max) { a.setStreamVolume(AudioManager.STREAM_ALARM, max, 0); forced = a.getStreamVolume(AudioManager.STREAM_ALARM) }
         } catch (e: Exception) { }
         wl = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "aura:ring").also { it.acquire(600_000L) }
         val attrs = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
@@ -153,7 +155,7 @@ class RingService : Service() {
             mp = MediaPlayer().apply {
                 setAudioAttributes(attrs); setDataSource(this@RingService, u)
                 isLooping = true; prepare()
-                if (gradual) setVolume(0f, 0f)
+                if (gradual) setVolume(0f, 0f) else setVolume(gain, gain)
                 start()
             }
             if (gradual) { t0 = System.currentTimeMillis(); h.post(ramp) }
@@ -162,8 +164,8 @@ class RingService : Service() {
             try { mp?.release() } catch (x: Exception) { }
             mp = null
             try {
-                var r = RingtoneManager.getRingtone(this, u).apply { audioAttributes = attrs; if (Build.VERSION.SDK_INT >= 28) isLooping = true; play() }
-                if (!r.isPlaying) r = RingtoneManager.getRingtone(this, defUri()).apply { audioAttributes = attrs; if (Build.VERSION.SDK_INT >= 28) isLooping = true; play() }
+                var r = RingtoneManager.getRingtone(this, u).apply { audioAttributes = attrs; if (Build.VERSION.SDK_INT >= 28) { isLooping = true; volume = gain }; play() }
+                if (!r.isPlaying) r = RingtoneManager.getRingtone(this, defUri()).apply { audioAttributes = attrs; if (Build.VERSION.SDK_INT >= 28) { isLooping = true; volume = gain }; play() }
                 rt = r
             } catch (e2: Exception) { }
         }

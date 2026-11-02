@@ -45,7 +45,7 @@ object Perms {
             Store.get(c, "samsungOk") == "1",
             c.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(c.packageName),
             nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_NONE,
-            Vol.ok(au.getStreamVolume(AudioManager.STREAM_ALARM), au.getStreamMaxVolume(AudioManager.STREAM_ALARM)) && !btOut(au),
+            Vol.ok(com.killswitch.aura.Settings.alarmPercent(c)) && !btOut(au),
         )
         return TEXT.mapIndexed { i, t -> Check(t.first, t.second, ok[i]) }
     }
@@ -74,11 +74,10 @@ object Perms {
             4 -> go(a, Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pk))
             5 -> go(a, Intent("android.settings.ZEN_MODE_SETTINGS"))
             else -> {
-                // Samsung hides the alarm slider in Sound settings, so raise it right here. Bluetooth has to be dealt with by hand.
+                // The alarm volume lives in the app now. Bluetooth has to be dealt with by hand.
                 val au = a.getSystemService(AudioManager::class.java)
                 if (btOut(au)) go(a, Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
-                else try { au.setStreamVolume(AudioManager.STREAM_ALARM, Vol.recommended(au.getStreamMaxVolume(AudioManager.STREAM_ALARM)), 0) }
-                catch (e: Exception) { go(a, Intent(Settings.ACTION_SOUND_SETTINGS)) }
+                else com.killswitch.aura.Settings.setInt(a, "av", Vol.RECOMMENDED)
             }
         }
     }

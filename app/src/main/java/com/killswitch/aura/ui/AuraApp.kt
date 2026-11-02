@@ -57,6 +57,11 @@ import com.killswitch.aura.glass.LiquidBottomTabs
 import com.killswitch.aura.glass.LiquidButton
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.graphics.CompositingStrategy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -90,7 +95,6 @@ fun AuraApp(reload: Int, startTab: Int) {
     val backdrop = rememberLayerBackdrop()
     val alarms = (state as? AlarmsState.Ready)?.list.orEmpty()
 
-    LaunchedEffect(startTab) { tab = startTab }
     // Real async read: the skeleton shows only if storage is slow, errors show only if the data is damaged.
     LaunchedEffect(reload, loadKey) {
         val r = withContext(Dispatchers.IO) { Store.tryAlarms(ctx) }
@@ -119,18 +123,37 @@ fun AuraApp(reload: Int, startTab: Int) {
     var dir by remember { mutableIntStateOf(1) }
     var steps by remember { mutableIntStateOf(1) }
     val slide = remember { Animatable(1f) }
-    LaunchedEffect(tab) {
-        if (tab != shown) {
-            steps = kotlin.math.abs(tab - shown)
-            dir = if (tab > shown) 1 else -1
-            leaving = shown
-            seenFor[tab].clear()
-            shown = tab
+    val scope = rememberCoroutineScope()
+    var switchInfo by remember { mutableStateOf("") }
+    var worstEver by remember { mutableIntStateOf(0) }
+
+    // One tap is one state change. The new page is built in a single step while the slide is already parked at 0, instead of
+    // waiting a frame for an effect and then building a whole screen in the same frame the animation starts.
+    fun switchTo(i: Int) {
+        if (i == shown) { tab = i; return }
+        steps = kotlin.math.abs(i - shown).coerceAtLeast(1)
+        dir = if (i > shown) 1 else -1
+        leaving = shown
+        seenFor[i].clear()
+        shown = i
+        tab = i
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
             slide.snapTo(0f)
             slide.animateTo(1f, tween(260 + 40 * steps, easing = FastOutSlowInEasing))
             leaving = -1
         }
+        // A meter for the stutter: the longest gap between two frames while the screen changes. Shown at the bottom of Setup.
+        scope.launch {
+            var last = 0L
+            var worst = 0L
+            val until = System.nanoTime() + 700_000_000L
+            while (System.nanoTime() < until) withFrameNanos { ns -> if (last != 0L) worst = maxOf(worst, ns - last); last = ns }
+            val ms = (worst / 1_000_000L).toInt()
+            worstEver = maxOf(worstEver, ms)
+            switchInfo = "Last switch to ${TABS[i].label}: slowest frame $ms ms. Worst since opening: $worstEver ms."
+        }
     }
+    LaunchedEffect(startTab) { if (startTab != shown) switchTo(startTab) }
     val reach = .10f + .04f * (steps - 1)
 
     // Two things the engine writes down when it had to work around a problem. Say them out loud instead of hiding them.
@@ -165,6 +188,7 @@ fun AuraApp(reload: Int, startTab: Int) {
                 onRunFix = { Perms.runFix(activity, it); checks = Perms.check(ctx) },
                 onNight = { night = true },
                 onChanged = { loadKey++; checks = Perms.check(ctx) },
+                switchInfo = switchInfo,
             )
             1 -> WorldTab(reload * 1000 + loadKey + worldRev * 100_000, now, is24, pad, seen) { picking = true }
             2 -> TimersTab(reload * 1000 + loadKey, now, pad, seen)
@@ -180,20 +204,22 @@ fun AuraApp(reload: Int, startTab: Int) {
                 Box(Modifier.fillMaxSize().graphicsLayer {
                     alpha = 1f - slide.value; translationX = -dir * slide.value * size.width * reach
                     scaleX = 1f - .05f * slide.value; scaleY = scaleX
+                    compositingStrategy = CompositingStrategy.ModulateAlpha
                 }) { page(leaving) }
             }
             Box(Modifier.fillMaxSize().graphicsLayer {
                 alpha = slide.value; translationX = dir * (1f - slide.value) * size.width * reach
                 scaleX = .95f + .05f * slide.value; scaleY = scaleX
+                compositingStrategy = CompositingStrategy.ModulateAlpha
             }) { page(shown) }
         }
 
         LiquidBottomTabs(
-            selectedTabIndex = { tab }, onTabSelected = { tab = it }, backdrop = backdrop, tabsCount = TABS.size,
+            selectedTabIndex = { tab }, onTabSelected = { switchTo(it) }, backdrop = backdrop, tabsCount = TABS.size,
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             TABS.forEachIndexed { i, t ->
-                LiquidBottomTab({ tab = i }) {
+                LiquidBottomTab({ switchTo(i) }) {
                     val on by selectAnim(tab == i)
                     val hop by animateFloatAsState(if (tab == i) 1f else 0f, spring(dampingRatio = .45f, stiffness = 380f), label = "tabHop")
                     Icon(t.icon, lerp(Aura.Muted, Aura.Text, on), Modifier.size(24.dp).graphicsLayer {

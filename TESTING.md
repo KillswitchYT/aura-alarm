@@ -19,9 +19,9 @@ Use Setup, Test alarm now, then the real thing below.
 - [ ] Install a new build while a snooze is waiting: it still rings (new).
 - [ ] Math challenge (3 sums): wrong answer gives a new sum, right ones count, only the third one dismisses.
 - [ ] Shake challenge: 25 shakes dismisses. Phone still on the lock screen while you shake.
-- [ ] Alarm volume: Setup, Alarm volume. Drag it low, tap Play a test: quiet. Drag it high, test again: clearly louder. (The Ringtone and Media sliders must NOT change it.)
-- [ ] While a test is ringing, press the phone's volume up/down: the on-screen slider says Alarm, and the sound follows. After you dismiss, the volume you ended on is kept (it is not put back).
-- [ ] Sound check in Setup goes off when the alarm volume is under 60%, and its Fix raises it to a loud level by itself.
+- [ ] Alarm volume: Setup, Alarm volume is a free 10 to 100% slider. Drag it to about 20%, tap Play a test: quiet. Drag to 100%, test again: clearly louder. Drag it a second and third time: the thumb still follows your finger. The phone's own Ringtone, Media and Alarm sliders must NOT change how loud it is.
+- [ ] While a test is ringing, press the phone's volume down: the on-screen slider says Alarm and the sound gets quieter. After you dismiss, the next ring is back at your slider level.
+- [ ] Sound check in Setup goes off when the alarm volume slider is under 60%, and its Fix sets it to 80% by itself.
 - [ ] Volume buttons while ringing for each of the 4 settings (Setup). With a challenge on, "Dismiss" must NOT dismiss.
 - [ ] Leave one ringing untouched: it stops by itself after 10 minutes.
 
@@ -63,9 +63,12 @@ Use Setup, Test alarm now, then the real thing below.
 - [ ] Ring style, volume buttons, time format (12 / 24 / phone) change immediately everywhere, widget included.
 - [ ] Bedtime: on, goal, wind-down. "Next reminder at ..." shows. The notification arrives at that time.
 - [ ] Night clock: black, dim red, screen stays on, moves every 30 s, tap or Back leaves. Brightness returns to normal after.
-- [ ] Backup: Copy, then change an alarm, then Paste + Restore (asks twice). The changed alarm goes back. Garbage text shows "not a valid backup".
-- [ ] Share opens the system share sheet.
+- [ ] Backup: Export to file, pick Downloads, save. Open the file in a file manager: readable text with your alarms in it.
+- [ ] Change an alarm, then Import from file and pick it: it says how many alarms it has, Restore asks twice, the changed alarm goes back. Pick a random file (a photo, a text file): it says it is not a backup.
+- [ ] A backup file made by the old web build still imports.
 - [ ] Last fired and Backup ring times look right after an alarm has rung.
+
+- [ ] Tab switching: tap each tab, then drag the bar across tabs. Note if any tap freezes. Setup, at the bottom, shows the slowest frame in ms (about 17 is smooth). Tell me the number and which tab, and whether it happens on every tap or only the first time you open each tab.
 
 ## 8. Other entry points
 - [ ] Home-screen widget: shows the time and the next alarm, tap opens the app.

@@ -12,6 +12,11 @@ import com.kyant.shapes.Capsule
 import android.media.AudioManager
 import com.killswitch.aura.Vol
 import kotlin.math.roundToInt
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.rememberUpdatedState
+import com.killswitch.aura.BackupFile
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -111,7 +116,7 @@ private fun fmtAt(ms: Long, is24: Boolean): String {
 @Composable
 fun SetupTab(
     checks: List<Check>, pad: PaddingValues, now: Long, is24: Boolean, rev: Int, seen: MutableSet<Any>,
-    onFix: (Int) -> Unit, onRunFix: (String) -> Unit, onNight: () -> Unit, onChanged: () -> Unit,
+    onFix: (Int) -> Unit, onRunFix: (String) -> Unit, onNight: () -> Unit, onChanged: () -> Unit, switchInfo: String = "",
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -130,18 +135,24 @@ fun SetupTab(
 
     var test by remember { mutableStateOf<List<Check>?>(null) }
     var testing by remember { mutableStateOf(false) }
-    var backupText by remember { mutableStateOf("") }
-    var copied by remember { mutableStateOf(false) }
-    var restoreMsg by remember { mutableStateOf<String?>(null) }
-    var confirmRestore by remember { mutableStateOf(false) }
-    LaunchedEffect(copied) { if (copied) { delay(1600); copied = false } }
-    LaunchedEffect(backupText) { confirmRestore = false; restoreMsg = null }
-    val parsed = remember(backupText) { if (backupText.isBlank()) null else Backup.parse(backupText) }
+    var av by remember(rev, bump) { mutableIntStateOf(Settings.alarmPercent(ctx)) }
 
-    fun clip() = ctx.getSystemService(ClipboardManager::class.java)
-    val au = remember { ctx.getSystemService(AudioManager::class.java) }
-    val maxVol = remember { au.getStreamMaxVolume(AudioManager.STREAM_ALARM) }
-    var vol by remember(rev, bump) { mutableIntStateOf(au.getStreamVolume(AudioManager.STREAM_ALARM)) }
+    // Backups are files. The system file picker does the saving and the opening, so the app needs no storage permission.
+    var fileMsg by remember { mutableStateOf<Pair<String, Boolean>?>(null) } // text, is it good news
+    var importText by remember { mutableStateOf<String?>(null) }
+    var confirmRestore by remember { mutableStateOf(false) }
+    val parsed = remember(importText) { importText?.let { Backup.parse(it) } }
+    val exportFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
+        if (uri != null) fileMsg = if (BackupFile.write(ctx, uri, BackupFile.text(ctx))) "Saved the backup file" to true else "Could not save the file" to false
+    }
+    val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            confirmRestore = false
+            val t = BackupFile.read(ctx, uri)
+            importText = t
+            fileMsg = if (t == null) "Could not read that file" to false else null
+        }
+    }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = pad, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item(key = "head") {
@@ -227,19 +238,19 @@ fun SetupTab(
             Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     BasicText("How loud it rings", Modifier.weight(1f), style = ts(16f, weight = FontWeight.Bold))
-                    BasicText("$vol of $maxVol", style = ts(15f, if (Vol.ok(vol, maxVol)) Aura.Muted else Aura.Rose, FontWeight.Bold))
+                    BasicText("$av%", style = ts(18f, if (Vol.ok(av)) Aura.Text else Aura.Rose, FontWeight.ExtraBold))
                 }
                 VolumeBar(
-                    Vol.fraction(vol, maxVol),
-                    { f -> val s = Vol.step(f, maxVol); if (s != vol) { vol = s; try { au.setStreamVolume(AudioManager.STREAM_ALARM, s, 0) } catch (e: Exception) { } } },
-                    { onChanged() },
+                    Vol.fraction(av),
+                    { f -> val p = Vol.percent(f); if (p != av) av = p },
+                    { Settings.setInt(ctx, "av", av); onChanged() },
                 )
                 BasicText(
-                    if (Vol.ok(vol, maxVol)) "This is the alarm's own volume. The Ringtone and Media sliders do not change it."
-                    else "Quiet. Below ${Vol.MIN_PERCENT}% is easy to sleep through, and the Sound check stays off.",
-                    style = ts(13f, if (Vol.ok(vol, maxVol)) Aura.Muted else Aura.Rose),
+                    if (Vol.ok(av)) "Aura sets the phone's alarm volume to full when it rings and uses this on top. The phone's own sliders do not change it."
+                    else "Quiet. Under ${Vol.MIN_PERCENT}% is easy to sleep through, and the Sound check stays off.",
+                    style = ts(13f, if (Vol.ok(av)) Aura.Muted else Aura.Rose),
                 )
-                Row { SoftButton("Play a test", { AlarmReceiver.startRing(ctx, """{"l":"Test alarm","sz":5,"vb":1,"gr":0}""", true) }) }
+                Row { SoftButton("Play a test", { Settings.setInt(ctx, "av", av); AlarmReceiver.startRing(ctx, """{"l":"Test alarm","sz":5,"vb":1,"gr":0}""", true) }) }
             }
         }
 
@@ -307,35 +318,34 @@ fun SetupTab(
         item(key = "bk-l") { SectionLabel("Backup") }
         item(key = "bk") {
             Panel(seen, "bk") {
-                BasicText("Alarms, cities, bedtime and settings as plain text. Keep it somewhere safe.", style = ts(13f, Aura.Muted))
+                BasicText("Everything in one file: alarms, cities, bedtime and settings. Keep a copy in Downloads or a cloud drive so a reset phone cannot take your alarms with it.", style = ts(13f, Aura.Muted))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SoftButton(if (copied) "Copied" else "Copy", { clip().setPrimaryClip(ClipData.newPlainText("Aura backup", Backup.exportAll(ctx))); copied = true })
-                    SoftButton("Share", {
-                        val send = Intent(Intent.ACTION_SEND).setType("text/plain")
-                            .putExtra(Intent.EXTRA_SUBJECT, "Aura Alarm backup").putExtra(Intent.EXTRA_TEXT, Backup.exportAll(ctx))
-                        try { ctx.startActivity(Intent.createChooser(send, "Share backup")) } catch (e: Exception) { }
-                    })
+                    SoftButton("Export to file", { fileMsg = null; exportFile.launch(BackupFile.name(System.currentTimeMillis())) })
+                    SoftButton("Import from file", { fileMsg = null; importFile.launch(arrayOf("*/*")) })
                 }
-                BasicText("Restore", style = ts(13f, Aura.Muted, FontWeight.Bold))
-                Field(backupText, { backupText = it }, "Paste a backup here")
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    SoftButton("Paste", { backupText = clip().primaryClip?.getItemAt(0)?.coerceToText(ctx)?.toString().orEmpty() })
-                    if (parsed != null) {
-                        SoftButton(if (confirmRestore) "Replace all alarms?" else "Restore", {
+                if (importText != null && parsed == null) BasicText("That file is not an Aura Alarm backup.", style = ts(13f, Aura.Rose, FontWeight.Bold))
+                if (parsed != null) {
+                    val n = parsed.alarms.size
+                    BasicText("This backup has $n alarm" + (if (n == 1) "" else "s") + ". Restoring replaces the ones you have now.", style = ts(13f, Aura.Muted))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        SoftButton(if (confirmRestore) "Replace everything?" else "Restore", {
                             if (!confirmRestore) confirmRestore = true
                             else {
-                                restoreMsg = if (Backup.restore(ctx, backupText)) "Restored ${parsed.alarms.size} alarm" + (if (parsed.alarms.size == 1) "" else "s") else "Could not restore"
-                                backupText = ""; bump++; onChanged()
+                                val ok = Backup.restore(ctx, importText.orEmpty())
+                                fileMsg = (if (ok) "Restored $n alarm" + (if (n == 1) "" else "s") else "Could not restore") to ok
+                                importText = null; confirmRestore = false; bump++; onChanged()
                             }
                         }, color = if (confirmRestore) Aura.Rose else Aura.Text)
+                        SoftButton("Cancel", { importText = null; confirmRestore = false })
                     }
                 }
-                if (backupText.isNotBlank() && parsed == null) BasicText("That is not a valid backup.", style = ts(13f, Aura.Rose, FontWeight.Bold))
-                else if (parsed != null) BasicText("Backup has ${parsed.alarms.size} alarm" + (if (parsed.alarms.size == 1) "" else "s") + ". Restoring replaces your current ones.", style = ts(13f, Aura.Muted))
-                restoreMsg?.let { BasicText(it, style = ts(13f, Aura.Mint, FontWeight.Bold)) }
+                fileMsg?.let { BasicText(it.first, style = ts(13f, if (it.second) Aura.Mint else Aura.Rose, FontWeight.Bold)) }
             }
         }
 
+        if (switchInfo.isNotEmpty()) item(key = "jank") {
+            BasicText(switchInfo + " A smooth frame is about 17 ms. Over 50 ms you feel a stutter.", Modifier.fillMaxWidth().padding(top = 8.dp), style = centered(ts(12f, Aura.Muted)))
+        }
         item(key = "about") {
             BasicText(
                 "Aura Alarm  \u00B7  no internet permission, no analytics, no ads",
@@ -345,17 +355,22 @@ fun SetupTab(
     }
 }
 
-/** A flat volume bar: drag anywhere on it, or tap a spot. Reports every position while moving, and once more when the finger lifts. */
+/**
+ * A flat volume bar: drag anywhere on it, or tap a spot. [onFraction] fires while the finger moves, [onDone] once when it lifts.
+ * The callbacks are read fresh on every touch, so the bar keeps working after the screen has reloaded around it.
+ */
 @Composable
 private fun VolumeBar(fraction: Float, onFraction: (Float) -> Unit, onDone: () -> Unit) {
     var w by remember { mutableFloatStateOf(1f) }
+    val move by rememberUpdatedState(onFraction)
+    val done by rememberUpdatedState(onDone)
     val thumb = 28.dp
     Box(
         Modifier.fillMaxWidth().height(48.dp).onSizeChanged { w = it.width.toFloat().coerceAtLeast(1f) }
-            .pointerInput(Unit) { detectTapGestures { o -> onFraction((o.x / w).coerceIn(0f, 1f)); onDone() } }
+            .pointerInput(Unit) { detectTapGestures { o -> move((o.x / w).coerceIn(0f, 1f)); done() } }
             .pointerInput(Unit) {
-                detectHorizontalDragGestures(onDragEnd = { onDone() }, onDragCancel = { onDone() }) { change, _ ->
-                    change.consume(); onFraction((change.position.x / w).coerceIn(0f, 1f))
+                detectHorizontalDragGestures(onDragEnd = { done() }, onDragCancel = { done() }) { change, _ ->
+                    change.consume(); move((change.position.x / w).coerceIn(0f, 1f))
                 }
             },
         contentAlignment = Alignment.CenterStart,
