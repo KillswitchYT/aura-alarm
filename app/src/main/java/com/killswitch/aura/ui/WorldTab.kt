@@ -123,9 +123,9 @@ private inline fun safe(f: () -> String): String = try { f() } catch (e: Excepti
 private fun CityCard(name: String, sub: String, zone: String?, now: Long, is24: Boolean, analog: Boolean, onRemove: (() -> Unit)?) {
     val hms = zone?.let { try { WorldClock.hms(it, now) } catch (e: Exception) { null } }
     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            BasicText(name, style = ts(20f, weight = FontWeight.Bold))
-            BasicText(if (hms == null) "Unknown time zone" else sub, style = ts(13f, if (hms == null) Aura.Rose else Aura.Muted))
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            BasicText(name, maxLines = 1, style = ts(20f, weight = FontWeight.Bold))
+            BasicText(if (hms == null) "Unknown time zone" else sub, maxLines = 2, style = ts(13f, if (hms == null) Aura.Rose else Aura.Muted))
         }
         if (hms != null) {
             if (analog) AnalogClock(hms.first, hms.second, hms.third)

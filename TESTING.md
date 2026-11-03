@@ -87,3 +87,8 @@ Use Setup, Test alarm now, then the real thing below.
 - [ ] Setup alarm volume slider (the library one) is apricot, not purple, and moves smoothly; the percent next to it follows.
 - [ ] Open the alarm editor and the city picker: chips, day letters and the time button inside the sheet are glass too.
 - [ ] Scroll the Setup tab and switch tabs: does anything stutter more than before? The ms meter at the bottom of Setup says how bad.
+
+## 11. Speed
+- [ ] Setup, bottom: after you have tapped through the tabs, it lists each tab as "first visit X ms, after that Y ms". Send me that whole block. Under 50 is smooth, over 100 you feel it.
+- [ ] Wait about 5 seconds after opening the app before tapping tabs (it is pre-loading them). Does the first visit feel better than before?
+- [ ] "Aura Alarm (fast)": a second, optimized copy (its own app, its own alarms, safe to delete). Install it from the Releases page (app-fast.apk), open the tabs, and compare the numbers and the feel with the normal app. If the fast one is smooth and the normal one is not, the lag is mostly the debug build.

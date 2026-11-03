@@ -63,6 +63,9 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.runtime.mutableStateMapOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -127,7 +130,11 @@ fun AuraApp(reload: Int, startTab: Int) {
     val slide = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
     var switchInfo by remember { mutableStateOf("") }
-    var worstEver by remember { mutableIntStateOf(0) }
+    val visited = remember { mutableSetOf(tab) }
+    val firstMs = remember { mutableStateMapOf<Int, Int>() } // the first time you open each tab
+    val laterMs = remember { mutableStateMapOf<Int, Int>() } // the worst of every visit after that
+    var warm by remember { mutableIntStateOf(-1) }
+    var warmDone by remember { mutableStateOf(false) }
 
     // One tap is one state change. The new page is built in a single step while the slide is already parked at 0, instead of
     // waiting a frame for an effect and then building a whole screen in the same frame the animation starts.
@@ -151,11 +158,26 @@ fun AuraApp(reload: Int, startTab: Int) {
             val until = System.nanoTime() + 700_000_000L
             while (System.nanoTime() < until) withFrameNanos { ns -> if (last != 0L) worst = maxOf(worst, ns - last); last = ns }
             val ms = (worst / 1_000_000L).toInt()
-            worstEver = maxOf(worstEver, ms)
-            switchInfo = "Last switch to ${TABS[i].label}: slowest frame $ms ms. Worst since opening: $worstEver ms."
+            if (visited.add(i)) firstMs[i] = ms else laterMs[i] = maxOf(laterMs[i] ?: 0, ms)
+            switchInfo = TABS.indices.filter { it in firstMs }.joinToString("\n") { t ->
+                TABS[t].label + ": first visit " + firstMs[t] + " ms" + (laterMs[t]?.let { ", after that " + it + " ms" } ?: "")
+            } + "\n" + (if (warmDone) "Pre-loading of the other tabs finished." else "Pre-loading of the other tabs is still running.")
         }
     }
     LaunchedEffect(startTab) { if (startTab != shown) switchTo(startTab) }
+
+    // Build the other tabs once, invisibly, while Home sits untouched. The first build of a screen is the expensive one (cold code,
+    // every glass control setting up its effects, shaders compiling), so paying it early makes the first real visit the cheap kind.
+    LaunchedEffect(Unit) {
+        delay(1500)
+        for (i in TABS.indices) {
+            if (i == shown) continue
+            warm = i
+            delay(700)
+        }
+        warm = -1
+        warmDone = true
+    }
     val reach = .10f + .04f * (steps - 1)
 
     // Two things the engine writes down when it had to work around a problem. Say them out loud instead of hiding them.
@@ -185,7 +207,8 @@ fun AuraApp(reload: Int, startTab: Int) {
                 onNotice = { if (armFailed) Scheduler.scheduleAll(ctx) else Store.set(ctx, "missed", "0"); loadKey++ },
             )
             4 -> SetupTab(
-                checks, pad, now, is24, reload * 1000 + loadKey, seen,
+                // The minute is all Setup needs, so its many glass controls are not rebuilt every second.
+                checks, pad, now / 60_000L * 60_000L, is24, reload * 1000 + loadKey, seen,
                 onFix = { Perms.fix(activity, it); checks = Perms.check(ctx) },
                 onRunFix = { Perms.runFix(activity, it); checks = Perms.check(ctx) },
                 onNight = { night = true },
@@ -216,6 +239,12 @@ fun AuraApp(reload: Int, startTab: Int) {
                 scaleX = .95f + .05f * slide.value; scaleY = scaleX
                 compositingStrategy = CompositingStrategy.ModulateAlpha
             }) { page(shown) }
+            // The pre-loading copy: drawn at 1% so the GPU really does the work, measured as zero size so a touch can never reach it.
+            if (warm >= 0 && warm != shown && warm != leaving) Box(
+                Modifier.layout { m, c -> val p = m.measure(c); layout(0, 0) { p.place(0, 0) } }
+                    .graphicsLayer { alpha = .01f; compositingStrategy = CompositingStrategy.ModulateAlpha }
+                    .clearAndSetSemantics { },
+            ) { Box(Modifier.fillMaxSize()) { page(warm) } }
             }
         }
 

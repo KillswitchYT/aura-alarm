@@ -16,6 +16,21 @@ android {
         val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
         versionCode = 100 + (run ?: 0)
         versionName = "3.1." + (run ?: "dev")
+        manifestPlaceholders["appLabel"] = "Aura Alarm"
+    }
+
+    buildTypes {
+        // An optimized copy (R8) for judging speed. A debug build runs cold, unoptimized code and feels slower than the real thing.
+        // It is a separate app (own id, own alarms) signed with the same key, so installing it never touches the main one.
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".fast"
+            versionNameSuffix = "-fast"
+            manifestPlaceholders["appLabel"] = "Aura Alarm (fast)"
+        }
     }
 
     signingConfigs {

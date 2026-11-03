@@ -57,6 +57,14 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
 
+      # Experimental: the optimized copy. A failure here must never stop the debug APK from being published.
+      - name: Build optimized APK (separate app)
+        continue-on-error: true
+        working-directory: ${{ steps.p.outputs.dir }}
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee build-fast.log
+
       # The APK as a release: on a phone, open the repo's Releases page and tap app-debug.apk.
       - name: Publish the APK as a release
         if: success()
@@ -65,8 +73,10 @@ jobs:
         run: |
           d="${{ steps.p.outputs.dir }}"
           cp "$d/app/build/outputs/apk/debug/app-debug.apk" app-debug.apk
+          files="app-debug.apk"
+          if [ -f "$d/app/build/outputs/apk/release/app-release.apk" ]; then cp "$d/app/build/outputs/apk/release/app-release.apk" app-fast.apk; files="$files app-fast.apk"; fi
           gh release delete latest --cleanup-tag -y --repo "${{ github.repository }}" 2>/dev/null || true
-          gh release create latest app-debug.apk --repo "${{ github.repository }}" --target "$GITHUB_SHA" --prerelease \
+          gh release create latest $files --repo "${{ github.repository }}" --target "$GITHUB_SHA" --prerelease \
             --title "Latest debug build" --notes "Built from commit ${GITHUB_SHA::7}. Debug-signed with the fixed project key, so it updates over the previous build."
 
       - name: Show errors on the run page
@@ -99,6 +109,9 @@ jobs:
           mkdir -p /tmp/out
           cp "$d/build.log" /tmp/out/build.log 2>/dev/null || echo "no build log was produced (build step did not run)" > /tmp/out/build.log
           cp sdk.log /tmp/out/sdk.log 2>/dev/null || echo "no sdk log" > /tmp/out/sdk.log
+          cp "$d/build-fast.log" /tmp/out/build-fast.log 2>/dev/null || echo "no optimized build log" > /tmp/out/build-fast.log
+          { grep -E '^e: |What went wrong|error:|FAILURE|Missing class|R8' /tmp/out/build-fast.log | head -60 || true; } > /tmp/out/errors-fast.txt
+          [ -s /tmp/out/errors-fast.txt ] || echo "no errors found" > /tmp/out/errors-fast.txt
           { cat /tmp/out/sdk.log /tmp/out/build.log | grep -E '^e: |What went wrong|error:|FAILURE|failed|Failed' | head -80 || true; } > /tmp/out/errors.txt
           [ -s /tmp/out/errors.txt ] || echo "no errors found" > /tmp/out/errors.txt
           echo "run $GITHUB_RUN_ID, commit $GITHUB_SHA" > /tmp/out/run.txt
