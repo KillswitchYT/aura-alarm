@@ -92,3 +92,7 @@ Use Setup, Test alarm now, then the real thing below.
 - [ ] Setup, bottom: after you have tapped through the tabs, it lists each tab as "first visit X ms, after that Y ms". Send me that whole block. Under 50 is smooth, over 100 you feel it.
 - [ ] Wait about 5 seconds after opening the app before tapping tabs (it is pre-loading them). Does the first visit feel better than before?
 - [ ] "Aura Alarm (fast)": a second, optimized copy (its own app, its own alarms, safe to delete). Install it from the Releases page (app-fast.apk), open the tabs, and compare the numbers and the feel with the normal app. If the fast one is smooth and the normal one is not, the lag is mostly the debug build.
+- [ ] Tabs stay alive now: scroll Setup down, switch away and back: your scroll position is kept. Type 5 0 0 on the Timers numpad, switch away and back: it is still there. (This is on purpose.)
+- [ ] The fade-in of each list still plays every time you arrive on a tab.
+- [ ] A hidden tab never reacts to touches: tap in empty space on any tab and check nothing opens or toggles that belongs to another tab.
+- [ ] With the Stopwatch running, switch to another tab and back: the time kept counting and the digits are right at once.

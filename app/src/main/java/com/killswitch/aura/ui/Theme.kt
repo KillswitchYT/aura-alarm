@@ -18,6 +18,9 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -111,12 +114,20 @@ fun Modifier.pressable(onClick: () -> Unit): Modifier {
 /** Fade and rise in, [index] steps after the first. Pass play = false to skip it (already shown once). 260 ms, 55 ms apart. */
 @Composable
 fun Modifier.staggerIn(index: Int, play: Boolean = true): Modifier {
+    val arrival = LocalArrival.current
+    val first = remember { play }                       // true only if this very item was built before it was ever shown
     val p = remember { Animatable(if (play) 0f else 1f) }
-    LaunchedEffect(Unit) {
-        if (play) { delay(index * 55L); p.animateTo(1f, tween(260, easing = FastOutSlowInEasing)) }
+    var handled by remember { mutableIntStateOf(-1) }
+    LaunchedEffect(arrival) {
+        val again = handled != -1                       // an arrival after the first one: greet the person again
+        handled = arrival
+        if (first || again) { p.snapTo(0f); delay(index * 55L); p.animateTo(1f, tween(260, easing = FastOutSlowInEasing)) }
     }
     return this.graphicsLayer { alpha = p.value; translationY = (1f - p.value) * 24.dp.toPx() }
 }
+
+/** Counts up each time the tab this content lives on becomes the visible one, so lists can fade in again without being rebuilt. */
+val LocalArrival = compositionLocalOf { 0 }
 
 /** The one filled button style in the app. */
 @Composable

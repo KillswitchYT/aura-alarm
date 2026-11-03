@@ -87,6 +87,7 @@ fun HomeTab(
     state: AlarmsState, now: Long, is24: Boolean, protectionOk: Int, protectionTotal: Int, padding: PaddingValues,
     seen: MutableSet<Any>, onProtection: () -> Unit, onToggle: (Int, Boolean) -> Unit, onOpen: (Int) -> Unit,
     onAdd: () -> Unit, onRetry: () -> Unit, onReset: () -> Unit, notice: String? = null, onNotice: () -> Unit = {},
+    active: Boolean = true,
 ) {
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableIntStateOf(0) } // 0 all, 1 on, 2 off
@@ -111,7 +112,7 @@ fun HomeTab(
                     val t = (off / full).coerceIn(0f, 1f)
                     alpha = 1f - t; scaleX = 1f - .10f * t; scaleY = scaleX; translationY = off * .35f
                 },
-            ) { Hero(now, is24, nextMs, nextAlarm) }
+            ) { Hero(now, is24, nextMs, nextAlarm, active) }
         }
         if (notice != null) item(key = "notice") { Notice(notice, onNotice) }
         if (protectionOk < protectionTotal) item(key = "prot") {
@@ -160,12 +161,12 @@ fun HomeTab(
  * The ring is driven by the frame clock, so it sweeps instead of ticking.
  */
 @Composable
-private fun Hero(now: Long, is24: Boolean, nextMs: Long, next: Alarm?) {
+private fun Hero(now: Long, is24: Boolean, nextMs: Long, next: Alarm?, active: Boolean) {
     val cal = Calendar.getInstance().apply { timeInMillis = now }
     val h = cal.get(Calendar.HOUR_OF_DAY)
     var frameMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
     // 30 fps is plenty for an arc that moves 6 degrees a second, and it halves the work the glass has to redo behind it.
-    LaunchedEffect(Unit) { var last = 0L; while (true) withFrameNanos { ns -> if (ns - last >= 33_000_000L) { last = ns; frameMs = System.currentTimeMillis() } } }
+    LaunchedEffect(active) { if (active) { var last = 0L; while (true) withFrameNanos { ns -> if (ns - last >= 33_000_000L) { last = ns; frameMs = System.currentTimeMillis() } } } }
 
     Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 22.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(152.dp), contentAlignment = Alignment.Center) {

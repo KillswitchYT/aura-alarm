@@ -33,7 +33,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 @Composable
-fun StopwatchTab(rev: Int, pad: PaddingValues, seen: MutableSet<Any>) {
+fun StopwatchTab(rev: Int, pad: PaddingValues, seen: MutableSet<Any>, active: Boolean = true) {
     val ctx = LocalContext.current
     var sw by remember { mutableStateOf<Stopwatch?>(null) } // null while loading
     var failed by remember { mutableStateOf(false) }
@@ -47,7 +47,7 @@ fun StopwatchTab(rev: Int, pad: PaddingValues, seen: MutableSet<Any>) {
     }
     val running = sw?.running == true
     // Frame-driven only while it is running and this tab is on screen, so the hundredths sweep instead of stepping.
-    LaunchedEffect(running) { if (running) while (true) withFrameNanos { frame = System.currentTimeMillis() } }
+    LaunchedEffect(running && active) { if (running && active) while (true) withFrameNanos { frame = System.currentTimeMillis() } }
     LaunchedEffect(copied) { if (copied) { delay(1600); copied = false } }
 
     fun apply(n: Stopwatch) { sw = n; StopwatchStore.save(ctx, n) }
