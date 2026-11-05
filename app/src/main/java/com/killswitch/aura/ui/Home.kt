@@ -143,7 +143,7 @@ fun HomeTab(
                     }
                     itemsIndexed(shown, key = { _, iv -> iv.index }) { pos, iv ->
                         Column(Modifier.animateItem().staggerIn(minOf(pos, 8) + 2, seen.add("row${iv.index}"))) {
-                            if (pos > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = .07f)))
+                            if (pos > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Aura.overlay(.07f)))
                             AlarmRow(
                                 iv.value, now, is24, isNext = nextMs > 0 && iv.value.on && iv.value.next(now) == nextMs,
                                 onToggle = { on -> onToggle(iv.index, on) }, onOpen = { onOpen(iv.index) },
@@ -180,7 +180,7 @@ private fun Hero(now: Long, is24: Boolean, nextMs: Long, next: Alarm?, active: B
                 val odd = (ms / 60_000L) % 2L == 1L
                 val start = if (odd) -90f + 360f * fr else -90f
                 val sweep = if (odd) 360f * (1f - fr) else 360f * fr
-                drawArc(Color.White.copy(alpha = .08f), 0f, 360f, false, topLeft = tl, size = sz, style = Stroke(w))
+                drawArc(Aura.overlay(.08f), 0f, 360f, false, topLeft = tl, size = sz, style = Stroke(w))
                 drawArc(Aura.Accent.copy(alpha = .20f), start, sweep, false, topLeft = tl, size = sz, style = Stroke(w * 2.4f, cap = StrokeCap.Round))
                 drawArc(Aura.Accent, start, sweep, false, topLeft = tl, size = sz, style = Stroke(w, cap = StrokeCap.Round))
             }
@@ -196,7 +196,7 @@ private fun Hero(now: Long, is24: Boolean, nextMs: Long, next: Alarm?, active: B
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             BasicText("Next alarm", style = ts(13f, Aura.Muted, FontWeight.Bold))
             if (nextMs > 0) {
-                BasicText("in ${countdown(nextMs - now)}", maxLines = 1, style = ts(26f, Aura.Accent, FontWeight.ExtraBold, -1f))
+                BasicText("in ${countdown(nextMs - now)}", maxLines = 1, style = ts(26f, Aura.AccentText, FontWeight.ExtraBold, -1f))
                 if (next != null) BasicText(
                     fmtTime(next.hour, next.minute, is24) + (if (is24) "" else " " + ampm(next.hour)) + (if (next.label.isNotEmpty()) "  \u00B7  " + next.label else ""),
                     maxLines = 1, style = ts(14f, Aura.Muted),
@@ -247,7 +247,7 @@ private fun Search(value: String, onChange: (String) -> Unit) {
                 },
             )
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = .12f)))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Aura.overlay(.12f)))
     }
 }
 
@@ -257,7 +257,7 @@ private fun AlarmRow(a: Alarm, now: Long, is24: Boolean, isNext: Boolean, onTogg
     val flat = rememberCanvasBackdrop { drawRect(Aura.Lift2) }
     val on by selectAnim(a.on)
     val nxt by selectAnim(isNext)
-    val timeColor = lerp(lerp(Aura.Muted.copy(alpha = .55f), Aura.Text, on), Aura.Accent, nxt)
+    val timeColor = lerp(lerp(Aura.Muted.copy(alpha = .55f), Aura.Text, on), Aura.AccentText, nxt)
     // Only the time and details open the editor. The toggle sits beside them, not inside the tappable area, so a tap on it only switches the alarm.
     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f).pressable(onOpen).padding(vertical = 16.dp)) {
@@ -283,9 +283,9 @@ private fun SkeletonRow() {
     val a by t.animateFloat(.35f, .85f, infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse), label = "a")
     Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f).graphicsLayer { alpha = a }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.size(width = 130.dp, height = 34.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = .14f)))
-            Box(Modifier.size(width = 180.dp, height = 12.dp).clip(RoundedCornerShape(6.dp)).background(Color.White.copy(alpha = .10f)))
+            Box(Modifier.size(width = 130.dp, height = 34.dp).clip(RoundedCornerShape(8.dp)).background(Aura.overlay(.14f)))
+            Box(Modifier.size(width = 180.dp, height = 12.dp).clip(RoundedCornerShape(6.dp)).background(Aura.overlay(.10f)))
         }
-        Box(Modifier.size(width = 56.dp, height = 30.dp).graphicsLayer { alpha = a }.clip(Capsule()).background(Color.White.copy(alpha = .14f)))
+        Box(Modifier.size(width = 56.dp, height = 30.dp).graphicsLayer { alpha = a }.clip(Capsule()).background(Aura.overlay(.14f)))
     }
 }

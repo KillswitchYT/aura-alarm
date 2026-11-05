@@ -143,7 +143,7 @@ private fun AnalogClock(h: Int, m: Int, s: Int) {
     Canvas(Modifier.size(64.dp)) {
         val r = size.minDimension / 2f
         val c = center
-        drawCircle(Color.White.copy(alpha = .16f), r - 1.5f.dp.toPx(), c, style = Stroke(2f.dp.toPx()))
+        drawCircle(Aura.overlay(.16f), r - 1.5f.dp.toPx(), c, style = Stroke(2f.dp.toPx()))
         fun hand(deg: Float, len: Float, w: Float, col: Color) {
             val a = Math.toRadians(deg.toDouble() - 90.0)
             drawLine(col, c, Offset(c.x + (cos(a) * len * r).toFloat(), c.y + (sin(a) * len * r).toFloat()), w, StrokeCap.Round)
@@ -171,7 +171,7 @@ private fun Converter(
         }
         BasicText("Your time", style = ts(13f, Aura.Muted, FontWeight.Bold))
         LiquidButton({ TimePickerDialog(ctx, { _, hh, mm -> onPick(hh * 60 + mm) }, h, m, is24).show() }, glassBackdrop(), height = 56.dp) {
-            BasicText(fmtTime(h, m, is24), style = ts(30f, Aura.Accent, FontWeight.ExtraBold, -1f))
+            BasicText(fmtTime(h, m, is24), style = ts(30f, Aura.AccentText, FontWeight.ExtraBold, -1f))
             if (!is24) BasicText(ampm(h), style = ts(13f, Aura.Muted, FontWeight.Bold))
         }
         cities.forEach { c ->

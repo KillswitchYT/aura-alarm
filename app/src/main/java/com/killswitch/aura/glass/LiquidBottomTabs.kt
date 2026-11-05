@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
+import com.killswitch.aura.ui.Aura
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberCombinedBackdrop
@@ -66,9 +67,9 @@ fun LiquidBottomTabs(
     modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit
 ) {
-    val isLightTheme = false
+    val isLightTheme = !Aura.isDark
     val accentColor =
-        if (isLightTheme) Color(0xFF0088FF)
+        if (isLightTheme) Aura.Text
         else Color(0xFFE6E8EF)
     val containerColor =
         if (isLightTheme) Color(0xFFFAFAFA).copy(0.4f)

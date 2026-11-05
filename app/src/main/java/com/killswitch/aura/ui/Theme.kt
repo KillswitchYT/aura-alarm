@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.killswitch.aura.Palettes
 import com.killswitch.aura.R
 import com.killswitch.aura.glass.LiquidButton
 import com.kyant.shapes.Capsule
@@ -46,19 +48,33 @@ import kotlinx.coroutines.delay
 
 /** One accent colour, used for the main action and live state only. Everything else is neutral. */
 object Aura {
-    val Ink = Color(0xFF090B10)
-    val Lift = Color(0xFF1A2030)
-    val Lift2 = Color(0xFF121722)
-    val Accent = Color(0xFFFFB07A)
-    val OnAccent = Color(0xFF1C1208)
-    val Text = Color(0xFFECEEF3)
-    val Muted = Color(0xFF9AA0AE)
-    val Selected = Color.White.copy(alpha = .20f)
-    val Mint = Color(0xFF6FE3A0)
-    val Rose = Color(0xFFFF8A80)
-    /** Flat colours the small glass controls (toggle, buttons) refract when they sit inside a card or sheet. */
-    val Card = Color(0xFF181D2A)
-    val Sheet = Color(0xFF151A26)
+    private var mode by mutableIntStateOf(0)         // the person's choice: 0 follows the phone, 1 dark, 2 light
+    private var systemDark by mutableStateOf(true)
+    private var forced by mutableIntStateOf(0)        // screens that must stay dark (the ring) while they are open
+
+    val isDark: Boolean get() = Palettes.useDark(mode, systemDark, forced > 0)
+    private val p: Palettes.P get() = if (isDark) Palettes.DARK else Palettes.LIGHT
+
+    /** Every colour below is read from the state above, so changing the theme repaints the whole app by itself. */
+    fun apply(mode: Int, systemDark: Boolean) { this.mode = mode; this.systemDark = systemDark }
+    fun forceDark(on: Boolean) { forced = (forced + if (on) 1 else -1).coerceAtLeast(0) }
+
+    val Ink: Color get() = Color(p.ink)
+    val Lift: Color get() = Color(p.lift)
+    val Lift2: Color get() = Color(p.lift2)
+    val Accent: Color get() = Color(p.accent)
+    val AccentText: Color get() = Color(p.accentText)
+    val OnAccent: Color get() = Color(p.onAccent)
+    val Text: Color get() = Color(p.text)
+    val Muted: Color get() = Color(p.muted)
+    val Mint: Color get() = Color(p.mint)
+    val Rose: Color get() = Color(p.rose)
+    /** Flat colours the small glass controls refract when they sit inside a card or sheet. */
+    val Card: Color get() = Color(p.card)
+    val Sheet: Color get() = Color(p.sheet)
+
+    /** A wash of the "on surface" colour: white on dark, black on light. For hairlines, tracks and selections. */
+    fun overlay(alpha: Float): Color = if (isDark) Color.White.copy(alpha = alpha) else Color.Black.copy(alpha = alpha * .8f)
 }
 
 val Jakarta = FontFamily(
@@ -88,10 +104,6 @@ fun DrawScope.drawAuraScene() {
     lift(Aura.Lift, w * .15f, h * .08f, big * .80f, .95f)
     lift(Aura.Lift2, w * .90f, h * .75f, big * .70f, .90f)
 }
-
-private val EdgeLight = Brush.linearGradient(
-    listOf(Color.White.copy(alpha = .30f), Color.White.copy(alpha = .05f), Color.White.copy(alpha = .03f), Color.White.copy(alpha = .12f))
-)
 
 @Composable
 fun rememberTick(): () -> Unit {

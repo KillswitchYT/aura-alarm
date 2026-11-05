@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.compose.ui.util.lerp
+import com.killswitch.aura.ui.Aura
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberBackdrop
@@ -55,10 +56,8 @@ fun LiquidSlider(
     backdrop: Backdrop,
     modifier: Modifier = Modifier
 ) {
-    val isLightTheme = false
-    val accentColor =
-        if (isLightTheme) Color(0xFF0088FF)
-        else Color(0xFFFFB07A)
+    val isLightTheme = !Aura.isDark
+    val accentColor = Aura.Accent
     val trackColor =
         if (isLightTheme) Color(0xFF787878).copy(0.2f)
         else Color(0xFF787880).copy(0.36f)

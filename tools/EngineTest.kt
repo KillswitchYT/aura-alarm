@@ -251,6 +251,25 @@ fun main() {
     check("empty is zero, huge is capped", TimerEntry.seconds("") == 0 && TimerEntry.seconds("999999") == 359_999)
     check("non digits are ignored", TimerEntry.push("5", "a-") == "5")
 
+    section("themes")
+    check("contrast scale is right", Math.abs(Palettes.contrast(0xFF000000.toInt(), 0xFFFFFFFF.toInt()) - 21.0) < 0.01 && Math.abs(Palettes.contrast(0xFF777777.toInt(), 0xFF777777.toInt()) - 1.0) < 0.001)
+    for ((name, p) in listOf("dark" to Palettes.DARK, "light" to Palettes.LIGHT)) {
+        for ((bgName, bg) in listOf("ink" to p.ink, "lift" to p.lift, "lift2" to p.lift2, "sheet" to p.sheet)) {
+            check("$name: main text is easy to read on $bgName", Palettes.contrast(p.text, bg) >= 7.0)
+            check("$name: muted text passes AA on $bgName", Palettes.contrast(p.muted, bg) >= 4.5)
+            check("$name: accent used as text passes AA on $bgName", Palettes.contrast(p.accentText, bg) >= 4.5)
+            check("$name: on / off words (mint, rose) pass AA on $bgName", Palettes.contrast(p.mint, bg) >= 4.5 && Palettes.contrast(p.rose, bg) >= 4.5)
+        }
+        check("$name: ring, toggle and button fill stand out from the scene (3:1)", Palettes.contrast(p.accent, p.ink) >= 3.0 && Palettes.contrast(p.accent, p.lift) >= 3.0)
+        check("$name: text on an accent button passes AA", Palettes.contrast(p.onAccent, p.accent) >= 4.5)
+    }
+    check("light really is light and dark really is dark", Palettes.luminance(Palettes.LIGHT.ink) > 0.5 && Palettes.luminance(Palettes.DARK.ink) < 0.05)
+    check("follow the phone", Palettes.useDark(0, true, false) && !Palettes.useDark(0, false, false))
+    check("dark and light ignore the phone", Palettes.useDark(1, false, false) && !Palettes.useDark(2, true, false))
+    check("the ring screen stays dark whatever is chosen", Palettes.useDark(2, false, true) && Palettes.useDark(0, false, true))
+    check("theme travels with the backup", Backup.parse(Backup.export(al, emptyList(), Bed(), "vol", th = 2))!!.th == 2 && Backup.parse(text)!!.th == null)
+    check("a wild theme number in a file is clamped", Backup.parse("""{"al":[],"th":9}""")!!.th == 2 && Backup.parse("""{"al":[],"th":-4}""")!!.th == 0)
+
     println("\n$total checks, ${total - bad} passed" + if (bad == 0) " - ALL PASSED" else ", $bad FAILED")
     if (bad != 0) System.exit(1)
 }

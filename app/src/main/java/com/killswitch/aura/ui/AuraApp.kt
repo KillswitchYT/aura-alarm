@@ -1,5 +1,9 @@
 package com.killswitch.aura.ui
 
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.toArgb
 import androidx.activity.ComponentActivity
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -89,6 +93,16 @@ private val TABS = listOf(
 fun AuraApp(reload: Int, startTab: Int) {
     val ctx = LocalContext.current
     val activity = ctx as ComponentActivity
+
+    // Theme: follow the phone when asked to, and keep the bar icons readable on whichever palette is showing.
+    val sysDark = isSystemInDarkTheme()
+    LaunchedEffect(sysDark) { Aura.apply(Settings.theme(ctx), sysDark) }
+    val dark = Aura.isDark
+    LaunchedEffect(dark) {
+        val bars = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT) else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        activity.enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+        activity.window.decorView.setBackgroundColor(Aura.Ink.toArgb())
+    }
     var tab by rememberSaveable { mutableIntStateOf(startTab) }
     var state by remember { mutableStateOf<AlarmsState>(AlarmsState.Loading) }
     var loadKey by remember { mutableIntStateOf(0) }

@@ -41,6 +41,9 @@ object Settings {
     /** 0 gentle ramp, 1 standard, 2 max volume and vibrate with no snooze. */
     fun ringStyle(c: Context) = int(c, "ro", 1)
 
+    /** 0 follows the phone, 1 dark, 2 light. */
+    fun theme(c: Context) = int(c, "th", 0).coerceIn(0, 2)
+
     /** The app's own alarm volume, 1% steps. 100 until the person lowers it. */
     fun alarmPercent(c: Context) = int(c, "av", 100).coerceIn(Vol.FLOOR, 100)
     fun analogWorld(c: Context) = int(c, "wa", 0) == 1

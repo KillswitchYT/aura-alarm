@@ -21,6 +21,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.text.format.DateFormat
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -138,6 +140,8 @@ fun SetupTab(
     var testing by remember { mutableStateOf(false) }
     var showChecks by remember { mutableStateOf(false) }
     var av by remember(rev, bump) { mutableIntStateOf(Settings.alarmPercent(ctx)) }
+    var themeMode by remember(rev, bump) { mutableIntStateOf(Settings.theme(ctx)) }
+    val sysDark = isSystemInDarkTheme()
     LaunchedEffect(av) { if (av != Settings.alarmPercent(ctx)) { delay(350); Settings.setInt(ctx, "av", av); onChanged() } }
 
     // Backups are files. The system file picker does the saving and the opening, so the app needs no storage permission.
@@ -187,7 +191,7 @@ fun SetupTab(
                             BasicText(iv.value.hint, style = ts(13f, Aura.Muted))
                         }
                         if (iv.value.ok) BasicText("On", style = ts(15f, Aura.Mint, FontWeight.Bold))
-                        else Box(Modifier.pressable { onFix(iv.index) }.padding(8.dp)) { BasicText("Fix", style = ts(15f, Aura.Accent, FontWeight.ExtraBold)) }
+                        else Box(Modifier.pressable { onFix(iv.index) }.padding(8.dp)) { BasicText("Fix", style = ts(15f, Aura.AccentText, FontWeight.ExtraBold)) }
                     }
                 }
             }
@@ -249,6 +253,11 @@ fun SetupTab(
                     SoftButton("Clear", { Store.set(ctx, "missed", "0"); bump++; onChanged() })
                 }
             }
+        }
+
+        item(key = "theme-l") { SectionLabel("Appearance") }
+        item(key = "theme") {
+            ThemeDropdown(themeMode) { i -> themeMode = i; Settings.setInt(ctx, "th", i); Aura.apply(i, sysDark) }
         }
 
         item(key = "avol-l") { SectionLabel("Alarm volume") }
@@ -372,6 +381,32 @@ fun SetupTab(
                 "Aura Alarm  \u00B7  no internet permission, no analytics, no ads",
                 Modifier.fillMaxWidth().padding(top = 8.dp), style = centered(ts(12f, Aura.Muted)),
             )
+        }
+    }
+}
+
+/** A dropdown, opened in place: the row shows the current choice, tapping it unfolds the options underneath. */
+@Composable
+private fun ThemeDropdown(mode: Int, onPick: (Int) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val names = listOf("Match phone", "Dark", "Light")
+    val turn by animateFloatAsState(if (open) 1f else 0f, tween(200), label = "dropdownChevron")
+    Column(Modifier.fillMaxWidth().animateContentSize()) {
+        Row(Modifier.fillMaxWidth().pressable { open = !open }.padding(horizontal = 4.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                BasicText("Theme", style = ts(16f, weight = FontWeight.Bold))
+                BasicText(names[mode], style = ts(13f, Aura.Muted))
+            }
+            Icon(Ic.Chevron, Aura.Muted, Modifier.size(22.dp).graphicsLayer { rotationZ = 90f * turn })
+        }
+        if (open) names.forEachIndexed { i, n ->
+            Row(
+                Modifier.fillMaxWidth().pressable { onPick(i); open = false }.topHairline().padding(start = 20.dp, end = 4.dp, top = 14.dp, bottom = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicText(n, Modifier.weight(1f), style = ts(16f, if (i == mode) Aura.Text else Aura.Muted, if (i == mode) FontWeight.Bold else FontWeight.Medium))
+                if (i == mode) Icon(Ic.Check, Aura.Text, Modifier.size(22.dp))
+            }
         }
     }
 }

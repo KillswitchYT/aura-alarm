@@ -53,7 +53,7 @@ import com.kyant.shapes.Capsule
 
 /** A faint line along the top edge. Rows are told apart by this and by spacing, never by a box around each one. */
 fun Modifier.topHairline(): Modifier = drawBehind {
-    drawLine(Color.White.copy(alpha = .07f), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx())
+    drawLine(Aura.overlay(.07f), Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx())
 }
 
 /** 0 to 1 and back, 200 ms, for anything that can be selected. Selection never snaps. */
@@ -106,7 +106,7 @@ fun BigButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, 
 @Composable
 fun ChipButton(text: String, selected: Boolean = false, onClick: () -> Unit) {
     val sel by selectAnim(selected)
-    LiquidButton(onClick, glassBackdrop(), surfaceColor = Color.White.copy(alpha = .22f * sel), height = 38.dp, horizontalPadding = 14.dp) {
+    LiquidButton(onClick, glassBackdrop(), surfaceColor = Aura.overlay(.22f * sel), height = 38.dp, horizontalPadding = 14.dp) {
         BasicText(text, style = ts(14f, Aura.Text, FontWeight.Bold))
     }
 }
@@ -128,7 +128,7 @@ fun LineField(value: String, onChange: (String) -> Unit, hint: String, modifier:
             keyboardActions = KeyboardActions(onDone = { onDone() }),
             decorationBox = { inner -> if (value.isEmpty()) BasicText(hint, style = ts(16f, Aura.Muted)); inner() },
         )
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = .14f)))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Aura.overlay(.14f)))
     }
 }
 
@@ -186,7 +186,7 @@ fun SkeletonCard(lines: Int = 2, height: Int = 20) {
         Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = height.dp).graphicsLayer { alpha = a },
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(Modifier.size(width = 130.dp, height = 26.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = .14f)))
-        for (i in 1 until lines) Box(Modifier.size(width = 190.dp, height = 12.dp).clip(RoundedCornerShape(6.dp)).background(Color.White.copy(alpha = .10f)))
+        Box(Modifier.size(width = 130.dp, height = 26.dp).clip(RoundedCornerShape(8.dp)).background(Aura.overlay(.14f)))
+        for (i in 1 until lines) Box(Modifier.size(width = 190.dp, height = 12.dp).clip(RoundedCornerShape(6.dp)).background(Aura.overlay(.10f)))
     }
 }

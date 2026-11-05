@@ -8,6 +8,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.SystemBarStyle
+import com.killswitch.aura.ui.Aura
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.mutableIntStateOf
@@ -32,6 +33,7 @@ class RingActivity : ComponentActivity() {
         volumeControlStream = AudioManager.STREAM_ALARM // otherwise the buttons change the ringtone volume and the alarm stays quiet
         super.onCreate(b)
         cur = this
+        Aura.forceDark(true)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
@@ -67,6 +69,7 @@ class RingActivity : ComponentActivity() {
     override fun onDestroy() {
         detector?.stop()
         if (cur === this) cur = null
+        Aura.forceDark(false)
         super.onDestroy()
     }
 

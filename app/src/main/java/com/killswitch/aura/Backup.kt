@@ -9,13 +9,13 @@ object Backup {
     /** [ro], [tfmt] and [wa] are new: ring style, time format and analog world clock. The web build never saved them, so they may be null. */
     data class Data(
         val alarms: List<Alarm>, val cities: List<String>?, val bed: Bed?, val vbtn: String?,
-        val ro: Int? = null, val tfmt: String? = null, val wa: Int? = null, val av: Int? = null,
+        val ro: Int? = null, val tfmt: String? = null, val wa: Int? = null, val av: Int? = null, val th: Int? = null,
     )
 
-    fun export(alarms: List<Alarm>, cities: List<String>, bed: Bed, vbtn: String, ro: Int? = null, tfmt: String? = null, wa: Int? = null, av: Int? = null): String {
+    fun export(alarms: List<Alarm>, cities: List<String>, bed: Bed, vbtn: String, ro: Int? = null, tfmt: String? = null, wa: Int? = null, av: Int? = null, th: Int? = null): String {
         val a = JSONArray(); alarms.forEach { a.put(it.toJson()) }
         return JSONObject().put("al", a).put("wc", JSONArray(cities)).put("bed", bed.toJson()).put("vbtn", vbtn)
-            .also { o -> ro?.let { o.put("ro", it) }; tfmt?.let { o.put("tfmt", it) }; wa?.let { o.put("wa", it) }; av?.let { o.put("av", it) } }.toString()
+            .also { o -> ro?.let { o.put("ro", it) }; tfmt?.let { o.put("tfmt", it) }; wa?.let { o.put("wa", it) }; av?.let { o.put("av", it) }; th?.let { o.put("th", it) } }.toString()
     }
 
     /** Null when [text] is not a backup. Only "al" is required. */
@@ -32,11 +32,12 @@ object Backup {
             tfmt = o.optString("tfmt", "").takeIf { it in setOf("auto", "12", "24") },
             wa = if (o.has("wa")) o.optInt("wa", 0).coerceIn(0, 1) else null,
             av = if (o.has("av")) o.optInt("av", 100).coerceIn(Vol.FLOOR, 100) else null,
+            th = if (o.has("th")) o.optInt("th", 0).coerceIn(0, 2) else null,
         )
     } catch (e: Exception) { null }
 
     fun exportAll(c: Context) = export(Store.alarms(c), WorldClock.savedOrDefault(c), Settings.bed(c), Settings.volumeButtons(c),
-        Settings.ringStyle(c), Settings.timeFormat(c), if (Settings.analogWorld(c)) 1 else 0, Settings.alarmPercent(c))
+        Settings.ringStyle(c), Settings.timeFormat(c), if (Settings.analogWorld(c)) 1 else 0, Settings.alarmPercent(c), Settings.theme(c))
 
     /** Returns false (and changes nothing) when [text] is not a valid backup. */
     fun restore(c: Context, text: String): Boolean {
@@ -49,6 +50,7 @@ object Backup {
         d.tfmt?.let { Settings.setStr(c, "tfmt", it) }
         d.wa?.let { Settings.setInt(c, "wa", it) }
         d.av?.let { Settings.setInt(c, "av", it) }
+        d.th?.let { Settings.setInt(c, "th", it) }
         Scheduler.scheduleAll(c)
         return true
     }

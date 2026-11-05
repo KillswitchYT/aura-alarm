@@ -234,7 +234,7 @@ fun RingScreen(
                     BasicText("  of $shakeGoal", Modifier.padding(bottom = 12.dp), style = ts(18f, Aura.Muted, FontWeight.Bold))
                 }
                 Spacer(Modifier.height(8.dp))
-                Box(Modifier.fillMaxWidth().height(4.dp).clip(Capsule()).background(Color.White.copy(alpha = .12f))) {
+                Box(Modifier.fillMaxWidth().height(4.dp).clip(Capsule()).background(Aura.overlay(.12f))) {
                     Box(Modifier.fillMaxWidth((shakes.toFloat() / shakeGoal).coerceIn(0f, 1f)).height(4.dp).clip(Capsule()).background(Aura.Accent))
                 }
             }

@@ -69,7 +69,7 @@ private fun Section(text: String) = BasicText(text, style = ts(13f, Aura.Muted, 
 @Composable
 private fun DayDot(letter: String, on: Boolean, onClick: () -> Unit) {
     val sel by selectAnim(on)
-    LiquidButton(onClick, glassBackdrop(), Modifier.size(38.dp), surfaceColor = Color.White.copy(alpha = .22f * sel), height = 38.dp, horizontalPadding = 0.dp) {
+    LiquidButton(onClick, glassBackdrop(), Modifier.size(38.dp), surfaceColor = Aura.overlay(.22f * sel), height = 38.dp, horizontalPadding = 0.dp) {
         BasicText(letter, style = ts(14f, lerp(Aura.Muted, Aura.Text, sel), FontWeight.Bold))
     }
 }
@@ -166,7 +166,7 @@ fun Editor(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BasicText(if (isNew) "New alarm" else "Edit alarm", Modifier.weight(1f), style = ts(20f, weight = FontWeight.ExtraBold))
                 LiquidButton({ pickTime() }, glassBackdrop(), height = 56.dp) {
-                    BasicText(fmtTime(h, time.substringAfter(':').toInt(), is24), style = ts(34f, Aura.Accent, FontWeight.ExtraBold, -1f))
+                    BasicText(fmtTime(h, time.substringAfter(':').toInt(), is24), style = ts(34f, Aura.AccentText, FontWeight.ExtraBold, -1f))
                     if (!is24) BasicText(ampm(h), style = ts(14f, Aura.Muted, FontWeight.Bold))
                 }
             }

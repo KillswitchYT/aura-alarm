@@ -114,7 +114,7 @@ fun TimersTab(rev: Int, now: Long, pad: PaddingValues, seen: MutableSet<Any>) {
             l == null -> items(2, key = { "skeleton$it" }) { SkeletonCard(2, 24) }
             else -> items(l, key = { it.id }) { t ->
                 Column(Modifier.animateItem().staggerIn(1, seen.add("t-${t.id}"))) {
-                    Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = .07f)))
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(Aura.overlay(.07f)))
                     TimerRow(
                         t, now,
                         onDelete = { update(l.filter { it.id != t.id }) },
@@ -188,7 +188,7 @@ private fun TimerRow(t: TimerItem, now: Long, onDelete: () -> Unit, onAdd: () ->
             }
         }
         Spacer(Modifier.height(10.dp))
-        Box(Modifier.fillMaxWidth().padding(horizontal = 4.dp).height(3.dp).clip(Capsule()).background(Color.White.copy(alpha = .12f))) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 4.dp).height(3.dp).clip(Capsule()).background(Aura.overlay(.12f))) {
             Box(Modifier.fillMaxWidth(p).height(3.dp).clip(Capsule()).background(if (t.running) Aura.Accent else Aura.Muted))
         }
     }
