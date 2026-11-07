@@ -84,7 +84,7 @@ Use Setup, Test alarm now, then the real thing below.
 - [ ] Every button, chip, close icon, toggle, slider and the dismiss slide is the same glass family (rim highlight, slight blur). Nothing looks like a flat grey pill next to the glass ones.
 - [ ] Alarms, World, Timers, Stopwatch and Setup have no boxes around rows. Rows are separated by faint lines.
 - [ ] Setup: with 7 of 7 protections on, the seven rows fold into one "All 7 protections are on" row; tap it to open them, "Hide" folds them again. Turn one protection off in system settings: they unfold by themselves.
-- [ ] Setup alarm volume slider (the library one) is apricot, not purple, and moves smoothly; the percent next to it follows.
+- [ ] Setup alarm volume slider (the library one) is the accent colour (orange in dark, blue in light), not purple, and moves smoothly; the percent next to it follows.
 - [ ] Open the alarm editor and the city picker: chips, day letters and the time button inside the sheet are glass too.
 - [ ] Scroll the Setup tab and switch tabs: does anything stutter more than before? The ms meter at the bottom of Setup says how bad.
 
@@ -100,7 +100,8 @@ Use Setup, Test alarm now, then the real thing below.
 ## 12. Light mode
 - [ ] Setup, Appearance, Theme dropdown: tap it, three choices open (Match phone, Dark, Light). Picking one repaints the whole app straight away, no restart.
 - [ ] Light: every word is readable on every tab (Alarms, World, Timers, Stopwatch, Setup), including the small grey captions, the "On" and "Fix" words in Setup and the red "Quiet" warning.
-- [ ] Light: the clock ring, toggles, the New alarm and Start buttons are a deeper orange and stand out clearly from the light background.
+- [ ] Light: the clock ring, toggles, the New alarm and Start buttons are iPhone-style blue (white text on the buttons) and stand out clearly from the light background. Dark mode is still orange.
+- [ ] Light: the blue words (the countdown, Fix, the next alarm time) are a slightly deeper blue and easy to read. The glass blue buttons are a lighter blue than the toggle fill, that is the glass library doing its thing, but the white text on them must still read clearly.
 - [ ] Light: the glass pieces (tab bar, New alarm, chips, toggles, volume slider) look like light glass, not dark patches. The alarm editor and city picker sheets are light too.
 - [ ] Light: the phone's clock and battery icons at the top are dark (readable), and the bottom navigation icons too.
 - [ ] Match phone: switch your phone between dark and light in system settings while the app is open: the app follows.

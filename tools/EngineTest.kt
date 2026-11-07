@@ -334,6 +334,22 @@ fun main() {
     check("retries are limited to a few minutes", Fire.shouldRetry(0) && Fire.shouldRetry(Fire.MAX_RETRIES - 1) && !Fire.shouldRetry(Fire.MAX_RETRIES) && !Fire.shouldRetry(-1))
     check("retry spacing is short but not a busy loop", Fire.RETRY_MS in 10_000L..60_000L && Fire.RETRY_MS * Fire.MAX_RETRIES <= 5 * 60_000L)
 
+    section("blue accent in light mode")
+    check("light accent is blue and dark keeps its orange", Palettes.LIGHT.accent == 0xFF0070EB.toInt() && Palettes.DARK.accent == 0xFFFFB07A.toInt())
+    check("blue is really blue (blue channel dominates), orange really orange", (Palettes.LIGHT.accent and 255) > ((Palettes.LIGHT.accent shr 8) and 255) && ((Palettes.DARK.accent shr 16) and 255) > (Palettes.DARK.accent and 255))
+    for ((name, p) in listOf("dark" to Palettes.DARK, "light" to Palettes.LIGHT)) {
+        for ((bgName, bg) in listOf("ink" to p.ink, "lift" to p.lift, "lift2" to p.lift2)) {
+            val fill = Palettes.glassFill(p.accent, bg)
+            val cr = Palettes.contrast(p.onAccent, fill)
+            println("  info $name glass button over $bgName: fill #%06X, button text %.2f:1".format(fill and 0xFFFFFF, cr))
+            // Every word on an accent button is 15 to 18 sp ExtraBold, which Android's own accessibility scanner counts as large text (3:1).
+            check("$name: button text is readable on the tinted glass over $bgName (large bold text, 3:1)", cr >= 3.0)
+        }
+    }
+    println("  info light: white on the flat blue %.2f:1, blue on the scene %.2f:1, blue text on the scene %.2f:1".format(
+        Palettes.contrast(Palettes.LIGHT.onAccent, Palettes.LIGHT.accent), Palettes.contrast(Palettes.LIGHT.accent, Palettes.LIGHT.ink), Palettes.contrast(Palettes.LIGHT.accentText, Palettes.LIGHT.ink)))
+    check("glass fill is a mix of tint and what is behind it", Palettes.glassFill(0xFF000000.toInt(), 0xFFFFFFFF.toInt()) == 0xFF404040.toInt() && Palettes.glassFill(0xFFFFFFFF.toInt(), 0xFF000000.toInt()) == 0xFFBFBFBF.toInt())
+
     println("\n$total checks, ${total - bad} passed" + if (bad == 0) " - ALL PASSED" else ", $bad FAILED")
     if (bad != 0) System.exit(1)
 }

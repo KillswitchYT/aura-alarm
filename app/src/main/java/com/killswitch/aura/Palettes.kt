@@ -1,6 +1,7 @@
 package com.killswitch.aura
 
 import kotlin.math.pow
+import kotlin.math.roundToInt
 
 /**
  * The two colour sets as plain ARGB numbers, so the readability of every text and background pair can be tested without Android.
@@ -30,12 +31,27 @@ object Palettes {
         mint = c(0x6FE3A0), rose = c(0xFF8A80),
     )
 
-    /** Cool light grey scene, near-black text. The accent is a deeper apricot so it still reads on a light background. */
+    /**
+     * Cool light grey scene, near-black text, iPhone-style blue accent (dark mode keeps its orange).
+     * 0070EB is a hair deeper than iOS 007AFF on purpose: white text on it passes AA flat (4.65), it stands out from the scene (3:1),
+     * and it still carries white text after the glass library lightens a tinted button (see [glassFill]).
+     * 0062CC is the same blue for when it has to be read as text (4.9 on the scene).
+     */
     val LIGHT = P(
         ink = c(0xE9ECF2), lift = c(0xFBFCFE), lift2 = c(0xF2F4F8), card = c(0xFFFFFF), sheet = c(0xF7F8FB),
-        text = c(0x13161D), muted = c(0x586070), accent = c(0xD2661B), accentText = c(0xA84B14), onAccent = c(0x1C1208),
+        text = c(0x13161D), muted = c(0x586070), accent = c(0x0070EB), accentText = c(0x0062CC), onAccent = c(0xFFFFFF),
         mint = c(0x0B7A41), rose = c(0xB8322A),
     )
+
+    /**
+     * What a tinted glass button really shows. The library draws the tint at 75% over whatever is behind the button, so the button is
+     * lighter than the flat accent. This is the colour the button text has to be readable on. An estimate: the real thing also blurs
+     * and refracts the backdrop, which does not change a plain light or dark scene much.
+     */
+    fun glassFill(tint: Int, behind: Int): Int {
+        fun mix(shift: Int): Int = (((tint shr shift) and 255) * 0.75 + ((behind shr shift) and 255) * 0.25).roundToInt().coerceIn(0, 255)
+        return c((mix(16) shl 16) or (mix(8) shl 8) or mix(0))
+    }
 
     private fun channel(v: Int): Double { val s = v / 255.0; return if (s <= 0.03928) s / 12.92 else ((s + 0.055) / 1.055).pow(2.4) }
 
