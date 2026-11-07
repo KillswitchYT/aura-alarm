@@ -201,7 +201,7 @@ fun main() {
     run {
         val log = mutableListOf<String>()
         val ok = Fire.run({ log += "ring"; false }, { log += "remember" }, { log += "book" }, { log += "rearm" }, { })
-        check("a ring that failed is NOT remembered, so the backup alarm can still ring", !ok && "remember" !in log && log == listOf("ring", "book", "rearm"))
+        check("a ring that failed is NOT remembered, so a later attempt is not blocked as a duplicate", !ok && "remember" !in log && log == listOf("ring", "book", "rearm"))
     }
     run {
         val log = mutableListOf<String>(); val errs = mutableListOf<String>()
@@ -269,6 +269,70 @@ fun main() {
     check("the ring screen stays dark whatever is chosen", Palettes.useDark(2, false, true) && Palettes.useDark(0, false, true))
     check("theme travels with the backup", Backup.parse(Backup.export(al, emptyList(), Bed(), "vol", th = 2))!!.th == 2 && Backup.parse(text)!!.th == null)
     check("a wild theme number in a file is clamped", Backup.parse("""{"al":[],"th":9}""")!!.th == 2 && Backup.parse("""{"al":[],"th":-4}""")!!.th == 0)
+
+    section("slice A: parity audit fixes")
+    // 1. Skipping the next ring of a one-day weekly alarm used to leave no ring at all (the search window was 8 days).
+    run {
+        val monOnly = Alarm(time = "07:00", days = setOf(1))
+        val first = monOnly.next(sat6)
+        check("Monday-only alarm rings Monday 26th", first == at(2026, 10, 26, 7, 0))
+        check("skipping it lands on the Monday after, not on nothing", monOnly.copy(skip = first).next(sat6) == at(2026, 11, 2, 7, 0))
+        val satOnly = Alarm(time = "07:00", days = setOf(6)); val s1 = satOnly.next(sat6)
+        check("Saturday-only alarm before its time rings today, and skipping it lands a week later", s1 == at(2026, 10, 24, 7, 0) && satOnly.copy(skip = s1).next(sat6) == at(2026, 10, 31, 7, 0))
+        val tue = Alarm(time = "07:00", days = setOf(2))
+        check("scheduler total over a skipped weekly alarm is not -1", Scheduler.nextOf(listOf(tue.copy(skip = tue.next(sat6))), sat6) > 0)
+        check("skip still moves a daily alarm by exactly one day", daily.copy(skip = t1).next(sat6) == at(2026, 10, 25, 7, 0))
+    }
+    // 2. A backup or a hand-edited file is not trusted. A time that is not a time used to crash the app on every launch.
+    run {
+        val junk = listOf("7am", "", "25:00", "07:61", "abc:de", "7", "07:30:15", "-1:20", ":", "7:")
+        for (j in junk) {
+            val a = Alarm.from(JSONObject("""{"t":"$j","l":"x","on":1,"d":[1]}"""))
+            val safe = try { a.hour; a.minute; a.next(sat6); true } catch (e: Exception) { false }
+            check("damaged time \"$j\" cannot crash anything, and the alarm is kept but off", safe && !a.on && a.label == "x")
+        }
+        check("a good time stays on", Alarm.from(JSONObject("""{"t":"06:30","on":1}""")).on)
+        check("7:5 is understood as 07:05", Alarm.from(JSONObject("""{"t":"7:5","on":1}""")).time == "07:05")
+        val dd = Alarm.from(JSONObject("""{"t":"07:00","on":1,"dt":"soon"}"""))
+        check("a damaged date is cleared and the alarm switched off, not turned into a daily one", dd.date == "" && !dd.on && (try { dd.next(sat6); true } catch (e: Exception) { false }))
+        check("a dated alarm in a loose format is normalised", Alarm.from(JSONObject("""{"t":"07:00","on":1,"dt":"2026-12-5"}""")).date == "2026-12-05")
+        check("an impossible month or day is a damaged date", cleanDate("2026-13-01") == "" && cleanDate("2026-02-40") == "" && cleanDate("") == "")
+        check("snooze length in a file is kept sane", Alarm.from(JSONObject("""{"t":"07:00","sz":-5}""")).snooze == 0 && Alarm.from(JSONObject("""{"t":"07:00","sz":99999}""")).snooze == 120)
+        val parsed = Backup.parse("""{"al":[{"t":"7am","on":1},{"t":"08:15","on":1,"l":"ok"}]}""")
+        check("a backup with one bad alarm still restores the good one", parsed != null && parsed.alarms.size == 2 && !parsed.alarms[0].on && parsed.alarms[1].on && parsed.alarms[1].time == "08:15")
+        check("and every restored alarm survives the scheduler's maths", parsed!!.alarms.all { try { it.next(sat6); true } catch (e: Exception) { false } })
+    }
+    // 3. Stored times are ASCII whatever language the phone speaks (Arabic and Persian locales print other digits).
+    run {
+        val keep = java.util.Locale.getDefault()
+        try {
+            for (tag in listOf("en-US", "ar-EG", "fa-IR", "hi-IN")) {
+                java.util.Locale.setDefault(java.util.Locale.forLanguageTag(tag))
+                check("hhmm is plain ASCII under $tag", hhmm(7, 5) == "07:05" && hhmm(23, 59) == "23:59")
+                check("ymd is plain ASCII under $tag", ymd(2026, 11, 7) == "2026-11-07")
+            }
+        } finally { java.util.Locale.setDefault(keep) }
+        check("a time stored by an older build with Arabic-Indic digits is read and rewritten as ASCII", cleanTime("\u0660\u0667:\u0663\u0660") == "07:30")
+        check("voice intents with silly hours are clamped to a real time", hhmm(25, 70) == "23:59" && hhmm(-3, -1) == "00:00")
+    }
+    // 4. A ring that could not start gets its own retry, because the re-arm that follows cancels the 2-minute backup.
+    run {
+        val log = mutableListOf<String>()
+        val ok = Fire.run({ log += "ring"; false }, { log += "remember" }, { log += "book" }, { log += "rearm" }, { }, { log += "retry" })
+        check("a failed ring asks for a retry before the bookkeeping and the re-arm", !ok && log == listOf("ring", "retry", "book", "rearm"))
+    }
+    run {
+        val log = mutableListOf<String>()
+        val ok = Fire.run({ log += "ring"; true }, { log += "remember" }, { log += "book" }, { log += "rearm" }, { }, { log += "retry" })
+        check("a ring that started never retries", ok && log == listOf("ring", "remember", "book", "rearm"))
+    }
+    run {
+        val log = mutableListOf<String>(); val errs = mutableListOf<String>()
+        Fire.run({ throw IllegalStateException("boom") }, { }, { log += "book" }, { log += "rearm" }, { errs += it.message!! }, { throw IllegalStateException("alarm manager gone") })
+        check("a retry that cannot be scheduled is reported and does not stop the re-arm", log == listOf("book", "rearm") && errs == listOf("boom", "alarm manager gone"))
+    }
+    check("retries are limited to a few minutes", Fire.shouldRetry(0) && Fire.shouldRetry(Fire.MAX_RETRIES - 1) && !Fire.shouldRetry(Fire.MAX_RETRIES) && !Fire.shouldRetry(-1))
+    check("retry spacing is short but not a busy loop", Fire.RETRY_MS in 10_000L..60_000L && Fire.RETRY_MS * Fire.MAX_RETRIES <= 5 * 60_000L)
 
     println("\n$total checks, ${total - bad} passed" + if (bad == 0) " - ALL PASSED" else ", $bad FAILED")
     if (bad != 0) System.exit(1)

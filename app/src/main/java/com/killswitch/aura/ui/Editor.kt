@@ -53,6 +53,8 @@ import androidx.compose.ui.unit.dp
 import com.killswitch.aura.Alarm
 import com.killswitch.aura.ampm
 import com.killswitch.aura.fmtTime
+import com.killswitch.aura.hhmm
+import com.killswitch.aura.ymd
 import com.killswitch.aura.glass.LiquidButton
 import com.killswitch.aura.glass.LiquidToggle
 import com.kyant.backdrop.Backdrop
@@ -97,7 +99,7 @@ fun Editor(
         val c = java.util.Calendar.getInstance()
         if (date.isNotEmpty()) try { val p = date.split("-").map { it.toInt() }; c.set(p[0], p[1] - 1, p[2]) } catch (e: Exception) { }
         android.app.DatePickerDialog(
-            ctx, { _, y, mo, d -> date = "%d-%02d-%02d".format(y, mo + 1, d); days = emptySet() },
+            ctx, { _, y, mo, d -> date = ymd(y, mo + 1, d); days = emptySet() },
             c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH), c.get(java.util.Calendar.DAY_OF_MONTH),
         ).also { it.datePicker.minDate = System.currentTimeMillis() - 1000L }.show()
     }
@@ -126,7 +128,7 @@ fun Editor(
     }
 
     fun pickTime() {
-        TimePickerDialog(ctx, { _, h, m -> time = "%02d:%02d".format(h, m) },
+        TimePickerDialog(ctx, { _, h, m -> time = hhmm(h, m) },
             time.substringBefore(':').toInt(), time.substringAfter(':').toInt(), is24).show()
     }
 

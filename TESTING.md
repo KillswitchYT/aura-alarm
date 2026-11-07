@@ -96,3 +96,22 @@ Use Setup, Test alarm now, then the real thing below.
 - [ ] The fade-in of each list still plays every time you arrive on a tab.
 - [ ] A hidden tab never reacts to touches: tap in empty space on any tab and check nothing opens or toggles that belongs to another tab.
 - [ ] With the Stopwatch running, switch to another tab and back: the time kept counting and the digits are right at once.
+
+## 12. Light mode
+- [ ] Setup, Appearance, Theme dropdown: tap it, three choices open (Match phone, Dark, Light). Picking one repaints the whole app straight away, no restart.
+- [ ] Light: every word is readable on every tab (Alarms, World, Timers, Stopwatch, Setup), including the small grey captions, the "On" and "Fix" words in Setup and the red "Quiet" warning.
+- [ ] Light: the clock ring, toggles, the New alarm and Start buttons are a deeper orange and stand out clearly from the light background.
+- [ ] Light: the glass pieces (tab bar, New alarm, chips, toggles, volume slider) look like light glass, not dark patches. The alarm editor and city picker sheets are light too.
+- [ ] Light: the phone's clock and battery icons at the top are dark (readable), and the bottom navigation icons too.
+- [ ] Match phone: switch your phone between dark and light in system settings while the app is open: the app follows.
+- [ ] The ring screen (Setup, Test alarm now) is ALWAYS dark, even in light mode. After you dismiss it the app is light again.
+- [ ] Night clock is black and dim red in both themes.
+- [ ] Your choice survives closing the app, and an exported backup restores it.
+- [ ] Not done on purpose: the home-screen widget keeps its own colours.
+
+## 13. Parity audit fixes (build after 3.1.26)
+- [ ] SKIP ON A ONE-DAY ALARM. Make an alarm with ONLY one weekday ticked (say Monday), Save. Open it, tap "Skip the next ring", Save. The row says "skipping next" and the Next alarm card shows the Monday AFTER (about 7 to 13 days away), not "None set". Before this fix it showed "None set" and the alarm was dead.
+- [ ] Open that alarm again and untick skip, Save: Next alarm goes back to the nearer Monday.
+- [ ] DAMAGED BACKUP. On a PC or in a text app, make a file named `bad.json` containing exactly: {"al":[{"t":"7am","l":"broken","on":1},{"t":"08:15","l":"fine","on":1}]}  Setup, Import from file, pick it, restore. PASS: the app does NOT crash. "fine" is on at 8:15. "broken" is there at 7:00 and switched OFF, so nothing rings at a time you never chose. Before this fix the app crashed every time you opened it.
+- [ ] Phone language set to Arabic (or any language with its own digits): create an alarm and a one-off dated alarm, export a backup file and open it in a text app: times and dates are plain 0-9 digits like 07:30 and 2026-12-05.
+- [ ] Not field-testable: the new ring retry (the ring could not start at all, so it tries again every 20 s up to 6 times). It only runs when both the foreground service and the loud notification fail, which I cannot make happen on purpose. It is covered by engine tests of the order of steps only. Scheduler.retryRing itself has never run.

@@ -27,6 +27,7 @@ class AlarmReceiver : BroadcastReceiver() {
         val code = i.getIntExtra("i", 0)
         val key = "f${code / 2}"
         if (t.toString() == Store.get(c, key)) return // main and backup both arrived, ring once
+        val attempt = i.getIntExtra("n", 0)
         Fire.run(
             ring = { startRing(c, i.getStringExtra("cfg"), i.getBooleanExtra("test", false)) },
             remember = { Store.set(c, key, t.toString()) },
@@ -36,6 +37,9 @@ class AlarmReceiver : BroadcastReceiver() {
             },
             rearm = { Scheduler.scheduleAll(c) },
             onError = { Store.set(c, "rxErr", it.toString()) },
+            retry = {
+                if (Fire.shouldRetry(attempt)) Scheduler.retryRing(c, i.getStringExtra("cfg") ?: "{}", i.getBooleanExtra("test", false), attempt + 1)
+            },
         )
     }
 

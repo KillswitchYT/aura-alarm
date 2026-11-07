@@ -18,9 +18,9 @@ object Scheduler {
     fun canExact(c: Context): Boolean =
         Build.VERSION.SDK_INT < 31 || c.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
-    private fun pi(c: Context, code: Int, act: String, t: Long, cfg: String, flags: Int, test: Boolean = false): PendingIntent? {
+    private fun pi(c: Context, code: Int, act: String, t: Long, cfg: String, flags: Int, test: Boolean = false, attempt: Int = 0): PendingIntent? {
         val i = Intent(c, AlarmReceiver::class.java).setAction(act)
-            .putExtra("t", t).putExtra("cfg", cfg).putExtra("i", code).putExtra("test", test)
+            .putExtra("t", t).putExtra("cfg", cfg).putExtra("i", code).putExtra("test", test).putExtra("n", attempt)
         return PendingIntent.getBroadcast(c, code, i, flags or PendingIntent.FLAG_IMMUTABLE)
     }
 
@@ -94,6 +94,17 @@ object Scheduler {
         Store.set(c, "snoozeT", t.toString())
         Store.set(c, "snoozeCfg", cfg)
         Store.set(c, "snoozeTest", if (test) "1" else "")
+    }
+
+    /**
+     * The ring could not start at all. Code 9001 is outside the range scheduleAll rebuilds, so the re-arm that follows does not cancel it.
+     * Like a snooze it uses setAlarmClock, which Doze never delays.
+     */
+    fun retryRing(c: Context, cfg: String, test: Boolean, attempt: Int) {
+        val t = System.currentTimeMillis() + Fire.RETRY_MS
+        val am = c.getSystemService(AlarmManager::class.java)
+        val p = pi(c, 9001, "FIRE", t, cfg, PendingIntent.FLAG_UPDATE_CURRENT, test, attempt)!!
+        try { am.setAlarmClock(AlarmManager.AlarmClockInfo(t, show(c)), p) } catch (e: Exception) { arm(am, canExact(c), t, p) }
     }
 
     /** A snooze that is still in the future is worth putting back after a reboot or an app update, both of which wipe every alarm. */

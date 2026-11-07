@@ -3,6 +3,7 @@ package com.killswitch.aura
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar
+import java.util.Locale
 
 /** Same JSON keys as the old web build, so saved alarms survive the move to native. */
 data class Alarm(
@@ -32,7 +33,8 @@ data class Alarm(
             val t = c.timeInMillis
             return if (t > now && t != skip) t else -1
         }
-        for (i in 0 until 8) {
+        // Two weeks, not one: skipping the next ring of a one-day weekly alarm has to land on the week after, not on nothing.
+        for (i in 0 until 15) {
             val c = Calendar.getInstance().apply {
                 timeInMillis = now
                 add(Calendar.DAY_OF_YEAR, i)
@@ -64,17 +66,25 @@ data class Alarm(
     companion object {
         val DAY_NAMES = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
 
+        /**
+         * Reads one alarm from saved or imported JSON. A file is not trusted: a time or date that is not real can never reach the
+         * screen or the scheduler, where it used to crash the app on every launch. Such an alarm is kept but switched off.
+         */
         fun from(o: JSONObject): Alarm {
             val d = o.optJSONArray("d")
+            val t = cleanTime(o.optString("t", "07:00"))
+            val rawDate = o.optString("dt", "")
+            val dt = cleanDate(rawDate)
+            val readable = t != null && (rawDate.isBlank() || dt.isNotEmpty())
             return Alarm(
-                time = o.optString("t", "07:00"),
+                time = t ?: "07:00",
                 label = o.optString("l", ""),
-                on = o.optInt("on", 0) == 1,
+                on = readable && o.optInt("on", 0) == 1,
                 days = (0 until (d?.length() ?: 0)).map { d!!.optInt(it, -1) }.filter { it in 0..6 }.toSet(),
-                date = o.optString("dt", ""),
+                date = dt,
                 sound = o.optString("snd", ""),
                 vibrate = o.optInt("vb", 1) == 1,
-                snooze = o.optInt("sz", 5),
+                snooze = o.optInt("sz", 5).coerceIn(0, 120),
                 gradual = o.optInt("gr", 0) == 1,
                 skip = o.optLong("sk", 0),
                 challenge = o.optInt("ch", 0).coerceIn(0, 2),
@@ -82,6 +92,29 @@ data class Alarm(
             )
         }
     }
+}
+
+/** Times and dates are stored as plain ASCII, whatever language the phone is set to (Arabic and Persian locales print other digits). */
+fun hhmm(h: Int, m: Int): String = String.format(Locale.US, "%02d:%02d", h.coerceIn(0, 23), m.coerceIn(0, 59))
+fun ymd(y: Int, mo: Int, d: Int): String = String.format(Locale.US, "%d-%02d-%02d", y, mo, d)
+
+/** "7:5" becomes "07:05", digits of any script are accepted, and anything that is not a time of day is null. */
+fun cleanTime(s: String): String? {
+    val p = s.trim().split(":")
+    if (p.size != 2) return null
+    val h = p[0].trim().toIntOrNull() ?: return null
+    val m = p[1].trim().toIntOrNull() ?: return null
+    return if (h in 0..23 && m in 0..59) hhmm(h, m) else null
+}
+
+/** A year-month-day string in the normal form, or "" when it is blank or not a real-looking date. */
+fun cleanDate(s: String): String {
+    val p = s.trim().split("-")
+    if (p.size != 3) return ""
+    val y = p[0].trim().toIntOrNull() ?: return ""
+    val mo = p[1].trim().toIntOrNull() ?: return ""
+    val d = p[2].trim().toIntOrNull() ?: return ""
+    return if (y in 2000..2100 && mo in 1..12 && d in 1..31) ymd(y, mo, d) else ""
 }
 
 fun fmtTime(h: Int, m: Int, is24: Boolean): String =
