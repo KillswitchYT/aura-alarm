@@ -166,7 +166,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: bash tools/ci/ring-test.sh apk/app-release.apk com.killswitch.aura.fast
+          script: timeout 1200 bash tools/ci/ring-test.sh apk/app-release.apk com.killswitch.aura.fast
 
       - name: Show the result on the run page
         if: always()
