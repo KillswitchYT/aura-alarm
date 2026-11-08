@@ -105,7 +105,7 @@ Use Setup, Test and status, Test alarm now, then the real thing below.
 - [ ] Light: the glass pieces (tab bar, New alarm, chips, toggles, volume slider) look like light glass, not dark patches. The alarm editor and city picker sheets are light too.
 - [ ] Light: the phone's clock and battery icons at the top are dark (readable), and the bottom navigation icons too.
 - [ ] Match phone: switch your phone between dark and light in system settings while the app is open: the app follows.
-- [ ] The ring screen (Setup, Test and status, Test alarm now) is ALWAYS dark, even in light mode. After you dismiss it the app is light again.
+- [ ] The ring screen (Setup, Test and status, Test alarm now) now FOLLOWS the theme: light in light mode, dark in dark mode (it used to be forced dark, see section 15).
 - [ ] Night clock is black and dim red in both themes.
 - [ ] Your choice survives closing the app, and an exported backup restores it.
 - [ ] Not done on purpose: the home-screen widget keeps its own colours.
@@ -131,3 +131,22 @@ Use Setup, Test and status, Test alarm now, then the real thing below.
 - [ ] Search: type "volume": Alarm volume, Volume buttons, Raise alarm volume appear. Tap one: it opens the right screen. Type "zzzz": a "Nothing in Setup matches" message. The x clears the search.
 - [ ] The hub shows a live summary on each row (All on or "2 need attention", Last fired time, "80%  ·  Standard", Bedtime On/Off, theme name).
 - [ ] Light mode: blocks, search field and rows are readable. Dark mode: the same.
+
+## 15. Theme, slider, safety nets (build after 3.1.29)
+- [ ] LIGHT MODE RING. Set Appearance to Light. Setup, Test and status, Test alarm now: the ring screen is LIGHT with the blue accent. Dismiss it: Setup behind it never turned dark, not even for a moment. (It used to flip dark because the ring forced dark for the whole app.)
+- [ ] Same in Dark: dark ring, orange accent, nothing flashes light.
+- [ ] Match phone: switch the phone between dark and light, then Test alarm now each time: the ring matches the phone.
+- [ ] COLD START. Close the app completely (swipe it away), then trigger an alarm (set one for 2 minutes away, or use the Test alarm after force-stopping): in Light mode the ring screen must be light from its first frame, not dark. It used to start dark because the ring never read your saved theme.
+- [ ] Open the app from the launcher in Light mode: no dark navy flash before the first screen appears (the launch window is now light, and dark when the phone is dark). One honest limit: if the phone is dark but you chose Light in the app, the first split second is still dark. Android decides that colour before the app can.
+- [ ] BLUE. Light mode blue is the iOS 26 blue (0088FF). The ring arc, the toggles, the volume slider fill and the glass buttons are that blue. Dark mode is still orange. The words "in 33m" and the alarm time are a slightly deeper blue so they stay readable.
+- [ ] White labels on the blue glass buttons (New alarm, Add city, Start) are readable. They measure about 2.6 to 2.7:1, a little under the 3:1 large-text guideline, because the library tints glass at 75% and that lightens the blue. If they feel faint in sunlight, tell me and I will deepen only the button tint.
+- [ ] VOLUME SLIDER. Setup, Sound and ringing. Put a finger ANYWHERE along the line (not on the knob) and drag slowly left and right: the knob follows your finger smoothly, 1% at a time, and the number follows. Put your finger on the knob and drag slowly: same. Tap on the line: it jumps there. Hold the finger still for a second in the middle of a drag, then keep dragging: it must keep following.
+- [ ] Scroll the Setup screen by dragging up and down on empty space above the slider: it scrolls. Dragging on the slider band itself slides the slider and does not scroll.
+- [ ] SAFETY NETS. Setup, Alarms, Safety nets shows three switches, all on. Each one turns off and on with single taps.
+- [ ] Keep alarms audible ON: the volume slider cannot go below 30%. If your volume was below 30% before, it now reads 30%. Turn it OFF: the slider goes down to 10% again.
+- [ ] Missed-alarm note ON: make an alarm ring (Test alarm now does NOT count, it is a test) and leave it alone for 10 minutes. It goes quiet and a "Missed alarm" notification appears with its name and time. Turn the switch OFF and repeat: no note.
+- [ ] Past-date warning ON: in the alarm editor pick a date, then a time that has already passed today: a red line says it will never ring. An alarm saved like that shows "Date passed, this will not ring" on the list. Turn the switch OFF: both go away.
+- [ ] SNOOZE CANCEL. Make an alarm 2 minutes from now, let it ring, snooze it for 10 min. Now delete that alarm (or switch it off). 10 minutes later NOTHING rings. (Before: the snooze rang anyway.) Also: snooze it, then only change its sound: the snooze still rings.
+- [ ] A test alarm's snooze (10 s) still rings even if you save alarms meanwhile.
+- [ ] GLASS. The grouped blocks in Setup and the search field are library glass now: a lighter panel with a soft rim that picks up the background, not a flat grey box. The alarm list rows stay without boxes on purpose.
+- [ ] Not on a device yet: all of the above, the slider gesture most of all.

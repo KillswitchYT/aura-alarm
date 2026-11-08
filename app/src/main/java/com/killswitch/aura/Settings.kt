@@ -44,8 +44,19 @@ object Settings {
     /** 0 follows the phone, 1 dark, 2 light. */
     fun theme(c: Context) = int(c, "th", 0).coerceIn(0, 2)
 
+    /** Safety nets: switches that are on until the person turns them off. */
+    private fun flag(c: Context, k: String) = int(c, k, 1) == 1
+    fun setFlag(c: Context, k: String, on: Boolean) = setInt(c, k, if (on) 1 else 0)
+    /** The slider cannot go below 30% (otherwise 10%). Also applied when the alarm rings, so an old low setting is raised too. */
+    fun volumeFloorOn(c: Context) = flag(c, "vfloor")
+    fun alarmFloor(c: Context) = Vol.floor(volumeFloorOn(c))
+    /** A note on the phone when an alarm rang its full 10 minutes and nobody answered. */
+    fun missedNote(c: Context) = flag(c, "wmiss")
+    /** A warning when a one-off alarm's date and time have already passed. */
+    fun pastWarn(c: Context) = flag(c, "wpast")
+
     /** The app's own alarm volume, 1% steps. 100 until the person lowers it. */
-    fun alarmPercent(c: Context) = int(c, "av", 100).coerceIn(Vol.FLOOR, 100)
+    fun alarmPercent(c: Context) = Vol.effective(int(c, "av", 100), alarmFloor(c))
     fun analogWorld(c: Context) = int(c, "wa", 0) == 1
 
     fun bed(c: Context): Bed = try { Bed.from(JSONObject(Store.get(c, "bed").ifEmpty { "{}" })) } catch (e: Exception) { Bed() }

@@ -11,8 +11,16 @@ object Vol {
     /** The Sound check stays off below this, because a quiet alarm is an alarm you sleep through. */
     const val MIN_PERCENT = 60
 
-    /** The slider's lowest point. A silent alarm is not an alarm. */
+    /** The slider's lowest point when "Keep alarms audible" is off. A silent alarm is not an alarm. */
     const val FLOOR = 10
+
+    /** The slider's lowest point with "Keep alarms audible" on, which is the default. At 10% the squared gain is 1%, which nobody hears. */
+    const val SAFE_FLOOR = 30
+
+    fun floor(keepAudible: Boolean) = if (keepAudible) SAFE_FLOOR else FLOOR
+
+    /** What actually rings: the saved percent, raised to the floor. An old low setting is lifted the moment the safety net is on. */
+    fun effective(stored: Int, floor: Int): Int = stored.coerceIn(floor, 100)
 
     /** What the one-tap fix sets: loud, but not the very top. */
     const val RECOMMENDED = 80
@@ -20,7 +28,7 @@ object Vol {
     fun ok(percent: Int) = percent >= MIN_PERCENT
 
     /** A slider position (0 to 1) as a whole percent, 1% steps. */
-    fun percent(fraction: Float): Int = (fraction.coerceIn(0f, 1f) * 100).roundToInt().coerceIn(FLOOR, 100)
+    fun percent(fraction: Float, floor: Int = FLOOR): Int = (fraction.coerceIn(0f, 1f) * 100).roundToInt().coerceIn(floor, 100)
 
     fun fraction(percent: Int): Float = percent.coerceIn(0, 100) / 100f
 

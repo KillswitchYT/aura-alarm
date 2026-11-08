@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.killswitch.aura.Alarm
+import com.killswitch.aura.Settings
 import com.killswitch.aura.ampm
 import com.killswitch.aura.fmtTime
 import com.killswitch.aura.hhmm
@@ -184,6 +185,9 @@ fun Editor(
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ChipButton(if (date.isEmpty()) "Pick a date" else "One-off on $date", date.isNotEmpty()) { pickDate() }
                 if (date.isNotEmpty()) ChipButton("Clear date", false) { date = "" }
+            }
+            if (date.isNotEmpty() && Settings.pastWarn(ctx) && Alarm(time = time, date = date).pastDue()) {
+                BasicText("That date and time have already passed, so this alarm will never ring.", Modifier.padding(top = 8.dp), style = ts(13f, Aura.Rose, FontWeight.Bold))
             }
 
             Section("Snooze")

@@ -16,6 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -76,6 +78,7 @@ fun LiquidSlider(
         var didDrag by remember { mutableStateOf(false) }
         // Aura change: the callbacks below are built once, so they must read the latest onValueChange, not the first one.
         val currentOnValueChange by rememberUpdatedState(onValueChange)
+        val currentValue by rememberUpdatedState(value)
         val dampedDragAnimation = remember(animationScope) {
             DampedDragAnimation(
                 animationScope = animationScope,
@@ -103,7 +106,7 @@ fun LiquidSlider(
             )
         }
         LaunchedEffect(dampedDragAnimation) {
-            snapshotFlow { value() }
+            snapshotFlow { currentValue() }
                 .collectLatest { value ->
                     if (dampedDragAnimation.targetValue != value) {
                         dampedDragAnimation.updateValue(value)
@@ -111,22 +114,43 @@ fun LiquidSlider(
                 }
         }
 
+        // Aura change: the original reacts to a tap on the 6 dp track and to a drag that starts ON the knob, so a slow drag from the line
+        // went nowhere. This band (drawn first, so the knob above it still gets its own touches) takes a press anywhere along the slider,
+        // jumps there and then follows the finger by its absolute position, so the whole line can be slid.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(44f.dp)
+                .pointerInput(animationScope) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        fun valueAt(x: Float): Float {
+                            val f = (x / trackWidth).coerceIn(0f, 1f)
+                            val delta = (valueRange.endInclusive - valueRange.start) * f
+                            return (if (isLtr) valueRange.start + delta else valueRange.endInclusive - delta).coerceIn(valueRange)
+                        }
+                        dampedDragAnimation.press()
+                        currentOnValueChange(valueAt(down.position.x))
+                        var held = true
+                        while (held) {
+                            val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                            if (change == null || !change.pressed) {
+                                held = false
+                            } else {
+                                currentOnValueChange(valueAt(change.position.x))
+                                change.consume()
+                            }
+                        }
+                        dampedDragAnimation.release()
+                    }
+                }
+        )
+
         Box(Modifier.layerBackdrop(trackBackdrop)) {
             Box(
                 Modifier
                     .clip(Capsule())
                     .background(trackColor)
-                    .pointerInput(animationScope) {
-                        detectTapGestures { position ->
-                            val delta = (valueRange.endInclusive - valueRange.start) * (position.x / trackWidth)
-                            val targetValue =
-                                (if (isLtr) valueRange.start + delta
-                                else valueRange.endInclusive - delta)
-                                    .coerceIn(valueRange)
-                            dampedDragAnimation.animateToValue(targetValue)
-                            currentOnValueChange(targetValue)
-                        }
-                    }
                     .height(6f.dp)
                     .fillMaxWidth()
             )

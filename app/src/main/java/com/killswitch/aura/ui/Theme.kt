@@ -50,14 +50,12 @@ import kotlinx.coroutines.delay
 object Aura {
     private var mode by mutableIntStateOf(0)         // the person's choice: 0 follows the phone, 1 dark, 2 light
     private var systemDark by mutableStateOf(true)
-    private var forced by mutableIntStateOf(0)        // screens that must stay dark (the ring) while they are open
 
-    val isDark: Boolean get() = Palettes.useDark(mode, systemDark, forced > 0)
+    val isDark: Boolean get() = Palettes.useDark(mode, systemDark)
     private val p: Palettes.P get() = if (isDark) Palettes.DARK else Palettes.LIGHT
 
     /** Every colour below is read from the state above, so changing the theme repaints the whole app by itself. */
     fun apply(mode: Int, systemDark: Boolean) { this.mode = mode; this.systemDark = systemDark }
-    fun forceDark(on: Boolean) { forced = (forced + if (on) 1 else -1).coerceAtLeast(0) }
 
     val Ink: Color get() = Color(p.ink)
     val Lift: Color get() = Color(p.lift)

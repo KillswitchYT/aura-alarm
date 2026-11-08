@@ -47,9 +47,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.killswitch.aura.Alarm
+import com.killswitch.aura.Settings
 import com.killswitch.aura.Scheduler
 import com.killswitch.aura.ampm
 import com.killswitch.aura.fmtTime
@@ -270,6 +272,9 @@ private fun AlarmRow(a: Alarm, now: Long, is24: Boolean, isNext: Boolean, onTogg
                 listOfNotNull(a.label.ifEmpty { null }, a.daysSummary(), challenge, if (a.skip > now) "skipping next" else null).joinToString("  \u00B7  "),
                 style = ts(13f, Aura.Muted),
             )
+            if (a.on && Settings.pastWarn(LocalContext.current) && a.pastDue(now)) {
+                BasicText("Date passed, this will not ring", Modifier.padding(top = 2.dp), style = ts(13f, Aura.Rose, FontWeight.Bold))
+            }
         }
         Spacer(Modifier.width(12.dp))
         LiquidToggle(selected = { a.on }, onSelect = onToggle, backdrop = flat)

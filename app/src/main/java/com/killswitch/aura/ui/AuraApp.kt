@@ -135,8 +135,10 @@ fun AuraApp(reload: Int, startTab: Int) {
 
     fun save(list: List<Alarm>) {
         val sorted = list.sortedBy { it.time }
+        val before = alarms
         state = AlarmsState.Ready(sorted)
         Store.saveAlarms(ctx, sorted)
+        Scheduler.dropOrphanedSnooze(ctx, before, sorted)
         Scheduler.scheduleAll(ctx)
     }
 

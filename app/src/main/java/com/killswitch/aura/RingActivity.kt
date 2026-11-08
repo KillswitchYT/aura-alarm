@@ -1,6 +1,7 @@
 package com.killswitch.aura
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.media.AudioManager
 import android.os.Bundle
 import android.view.KeyEvent
@@ -11,8 +12,11 @@ import androidx.activity.SystemBarStyle
 import com.killswitch.aura.ui.Aura
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.toArgb
 import com.killswitch.aura.ui.RingScreen
 import org.json.JSONObject
 
@@ -33,11 +37,13 @@ class RingActivity : ComponentActivity() {
         volumeControlStream = AudioManager.STREAM_ALARM // otherwise the buttons change the ringtone volume and the alarm stays quiet
         super.onCreate(b)
         cur = this
-        Aura.forceDark(true)
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-        )
+        // The ring follows the same theme as the rest of the app. It used to force dark for everyone, and because the theme is shared by
+        // the whole process, the screen behind it (Setup, after a test) turned dark too. It also never read the saved theme itself, so an
+        // alarm that fired with the app closed always started dark.
+        Aura.apply(Settings.theme(this), (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES)
+        val bars = if (Aura.isDark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT) else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+        enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+        window.decorView.setBackgroundColor(Aura.Ink.toArgb())
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         @Suppress("DEPRECATION")
         if (android.os.Build.VERSION.SDK_INT < 27) window.addFlags(
@@ -48,6 +54,8 @@ class RingActivity : ComponentActivity() {
         })
         read(intent)
         setContent {
+            val sysDark = isSystemInDarkTheme()
+            LaunchedEffect(sysDark) { Aura.apply(Settings.theme(this@RingActivity), sysDark) }
             RingScreen(
                 label = label.value, challenge = challenge.intValue,
                 canSnooze = canSnooze(), snoozeText = if (test.value) "Snooze 10 s" else "Snooze ${snooze.intValue} min",
@@ -69,7 +77,6 @@ class RingActivity : ComponentActivity() {
     override fun onDestroy() {
         detector?.stop()
         if (cur === this) cur = null
-        Aura.forceDark(false)
         super.onDestroy()
     }
 

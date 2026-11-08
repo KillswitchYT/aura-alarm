@@ -32,14 +32,14 @@ object Palettes {
     )
 
     /**
-     * Cool light grey scene, near-black text, iPhone-style blue accent (dark mode keeps its orange).
-     * 0070EB is a hair deeper than iOS 007AFF on purpose: white text on it passes AA flat (4.65), it stands out from the scene (3:1),
-     * and it still carries white text after the glass library lightens a tinted button (see [glassFill]).
-     * 0062CC is the same blue for when it has to be read as text (4.9 on the scene).
+     * Light mode, built for light and not turned over from dark: the grey is iOS's own grouped-list grey (F2F2F7) and the accent is the
+     * blue of iOS 26, 0088FF, the value the glass library itself uses for light mode (its dark mode uses 0091FF). Dark mode keeps its orange.
+     * 0088FF is 3.1 on this grey, so it clears the 3:1 that shapes need. It is NOT readable as small text (2.9 on the grey), so blue
+     * words use the deeper 0066D6 (4.6). White text on a tinted glass button is lighter than white on flat blue, see [glassFill].
      */
     val LIGHT = P(
-        ink = c(0xE9ECF2), lift = c(0xFBFCFE), lift2 = c(0xF2F4F8), card = c(0xFFFFFF), sheet = c(0xF7F8FB),
-        text = c(0x13161D), muted = c(0x586070), accent = c(0x0070EB), accentText = c(0x0062CC), onAccent = c(0xFFFFFF),
+        ink = c(0xF2F2F7), lift = c(0xFBFBFD), lift2 = c(0xF2F4F8), card = c(0xFFFFFF), sheet = c(0xF7F8FB),
+        text = c(0x13161D), muted = c(0x586070), accent = c(0x0088FF), accentText = c(0x0066D6), onAccent = c(0xFFFFFF),
         mint = c(0x0B7A41), rose = c(0xB8322A),
     )
 
@@ -67,7 +67,7 @@ object Palettes {
 
     /**
      * Which palette to show. [mode] is the person's choice: 0 follows the phone, 1 dark, 2 light.
-     * A screen that is always dark (the ring, so waking up is not a flash of white) passes [forcedDark].
+     * Every screen, the ring included, uses the same answer. A per-screen override cannot work: the theme is one shared object.
      */
-    fun useDark(mode: Int, systemDark: Boolean, forcedDark: Boolean): Boolean = forcedDark || mode == 1 || (mode != 2 && systemDark)
+    fun useDark(mode: Int, systemDark: Boolean): Boolean = mode == 1 || (mode != 2 && systemDark)
 }

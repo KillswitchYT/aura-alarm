@@ -45,6 +45,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,6 +69,8 @@ import com.killswitch.aura.Settings
 import com.killswitch.aura.Store
 import com.killswitch.aura.ampm
 import com.killswitch.aura.fmtTime
+import com.killswitch.aura.glass.LiquidField
+import com.killswitch.aura.glass.LiquidPanel
 import com.killswitch.aura.glass.LiquidSlider
 import com.killswitch.aura.glass.LiquidToggle
 import com.kyant.backdrop.backdrops.rememberCanvasBackdrop
@@ -113,6 +116,9 @@ private val INDEX = listOf(
     SearchEntry("Alarm volume", "Sound and ringing", "sound", "loud quiet percent slider", Ic.Volume),
     SearchEntry("Ring style", "Sound and ringing", "sound", "gentle ramp standard max vibrate", Ic.Volume),
     SearchEntry("Volume buttons while ringing", "Sound and ringing", "sound", "snooze dismiss do nothing", Ic.Volume),
+    SearchEntry("Keep alarms audible", "Safety nets", "safety", "minimum volume floor quiet 30 10 percent", Ic.Alert),
+    SearchEntry("Missed-alarm note", "Safety nets", "safety", "notification missed warning ten minutes nobody answered", Ic.Alert),
+    SearchEntry("Past-date warning", "Safety nets", "safety", "one-off date passed never ring", Ic.Alert),
     SearchEntry("Bedtime reminder", "Bedtime", "bedtime", "sleep goal wind down nudge", Ic.Sleep),
     SearchEntry("Night clock", "Opens the night clock", "night", "dim red screen bedside", Ic.Moon),
     SearchEntry("Theme", "Appearance and time", "display", "dark light match phone mode colour", Ic.Sun),
@@ -121,12 +127,10 @@ private val INDEX = listOf(
     SearchEntry("Privacy and version", "About", "about", "internet analytics ads frame meter", Ic.Info),
 )
 
-/** One grouped block, as in the reference: a soft lift behind the rows of one topic, rows split by hairlines. Only Setup uses them. */
+/** One grouped block, as in the reference: a panel of library glass behind the rows of one topic, rows split by hairlines. Only Setup uses them. */
 @Composable
 private fun Block(title: String?, content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Aura.Card.copy(alpha = .65f)).padding(horizontal = 16.dp, vertical = 14.dp),
-    ) {
+    LiquidPanel(glassBackdrop(), Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp)) {
         if (title != null) BasicText(title, Modifier.padding(bottom = 4.dp), style = ts(17f, weight = FontWeight.ExtraBold))
         content()
     }
@@ -186,13 +190,26 @@ private fun Choice(title: String, sub: String?, selected: Boolean, first: Boolea
     }
 }
 
+/** A name, one quiet line, and a library toggle. */
+@Composable
+private fun ToggleRow(title: String, sub: String, on: Boolean, first: Boolean, backdrop: com.kyant.backdrop.Backdrop, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().then(if (first) Modifier else Modifier.topHairline()).padding(vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            BasicText(title, style = ts(16f, weight = FontWeight.Bold))
+            BasicText(sub, style = ts(13f, Aura.Muted))
+        }
+        Spacer(Modifier.size(14.dp))
+        LiquidToggle(selected = { on }, onSelect = onChange, backdrop = backdrop)
+    }
+}
+
 /** The rounded search field of the reference. */
 @Composable
 private fun SearchPill(value: String, onChange: (String) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().height(48.dp).clip(Capsule()).background(Aura.overlay(.07f)).padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    LiquidField(glassBackdrop(), Modifier.fillMaxWidth().height(48.dp)) {
         Icon(Ic.Search, Aura.Muted, Modifier.size(20.dp))
         Spacer(Modifier.size(10.dp))
         BasicTextField(
@@ -257,7 +274,14 @@ fun SetupTab(
 
     var test by remember { mutableStateOf<List<Check>?>(null) }
     var testing by remember { mutableStateOf(false) }
-    var av by remember(rev, bump) { mutableIntStateOf(Settings.alarmPercent(ctx)) }
+    // The slider is fed a FLOAT. The library moves the knob by adding each frame's tiny drag step to the current value, and a value that
+    // was rounded to a whole percent every time swallowed those steps: a slow drag rounded straight back and the knob barely moved.
+    val floor = remember(rev, bump) { Settings.alarmFloor(ctx) }
+    var avF by remember(rev, bump) { mutableFloatStateOf(Settings.alarmPercent(ctx).toFloat()) }
+    val av = avF.roundToInt()
+    val floorOn = remember(rev, bump) { Settings.volumeFloorOn(ctx) }
+    val missedOn = remember(rev, bump) { Settings.missedNote(ctx) }
+    val pastOn = remember(rev, bump) { Settings.pastWarn(ctx) }
     var themeMode by remember(rev, bump) { mutableIntStateOf(Settings.theme(ctx)) }
     val sysDark = isSystemInDarkTheme()
     LaunchedEffect(av) { if (av != Settings.alarmPercent(ctx)) { delay(350); Settings.setInt(ctx, "av", av); onChanged() } }
@@ -333,6 +357,8 @@ fun SetupTab(
                     }
                     Section(1, seen, "Alarms", "How they ring and when to rest") {
                         NavRow(Ic.Volume, "Sound and ringing", "$av%  \u00B7  " + RINGS[ro.coerceIn(0, 2)].first, Aura.Muted, true) { openScreen("sound") }
+                        val nets = listOf(floorOn, missedOn, pastOn).count { it }
+                        NavRow(Ic.Alert, "Safety nets", if (nets == 3) "All on" else "$nets of 3 on", if (nets == 3) Aura.Mint else Aura.Muted, false) { openScreen("safety") }
                         NavRow(Ic.Sleep, "Bedtime", if (bed.on) "On" else "Off", Aura.Muted, false) { openScreen("bedtime") }
                         NavRow(Ic.Moon, "Night clock", null, Aura.Muted, false) { openScreen("night") }
                     }
@@ -427,9 +453,9 @@ fun SetupTab(
                     Spacer(Modifier.size(10.dp))
                     // The repo's slider. It reports every step while you drag; saving waits until you stop for a moment.
                     LiquidSlider(
-                        value = { av.toFloat() },
-                        onValueChange = { av = it.roundToInt().coerceIn(Vol.FLOOR, 100) },
-                        valueRange = Vol.FLOOR.toFloat()..100f,
+                        value = { avF },
+                        onValueChange = { avF = it.coerceIn(floor.toFloat(), 100f) },
+                        valueRange = floor.toFloat()..100f,
                         visibilityThreshold = 0.01f,
                         backdrop = glassBackdrop(),
                     )
@@ -450,6 +476,25 @@ fun SetupTab(
                         VBTNS.forEach { (k, n) -> ChipButton(n, vbtn == k) { Settings.setStr(ctx, "vbtn", k); bump++ } }
                     }
                     if (vbtn == "stop") BasicText("Alarms with a wake-up challenge ignore this until the challenge is solved.", Modifier.padding(top = 10.dp), style = ts(13f, Aura.Muted))
+                }
+            }
+
+            // ---------------------------------------------------------------- safety nets
+            "safety" -> {
+                ScreenHeader("Safety nets", "Things that stop you oversleeping", { goBack() })
+                Block(null) {
+                    ToggleRow(
+                        "Keep alarms audible", "The volume slider stops at 30%, so an alarm cannot be set too quiet to hear. Off lets it go down to 10%.",
+                        floorOn, true, flat,
+                    ) { Settings.setFlag(ctx, "vfloor", it); bump++; onChanged() }
+                    ToggleRow(
+                        "Missed-alarm note", "An alarm that rings 10 minutes with nobody answering goes quiet. This leaves a notification so you know it happened.",
+                        missedOn, false, flat,
+                    ) { Settings.setFlag(ctx, "wmiss", it); bump++ }
+                    ToggleRow(
+                        "Past-date warning", "Warns you when a one-off alarm's date and time have already passed, because that alarm can never ring.",
+                        pastOn, false, flat,
+                    ) { Settings.setFlag(ctx, "wpast", it); bump++ }
                 }
             }
 
@@ -517,7 +562,9 @@ fun SetupTab(
                             SoftButton(if (confirmRestore) "Replace everything?" else "Restore", {
                                 if (!confirmRestore) confirmRestore = true
                                 else {
+                                    val before = Store.alarms(ctx)
                                     val ok = Backup.restore(ctx, importText.orEmpty())
+                                    Scheduler.dropOrphanedSnooze(ctx, before, Store.alarms(ctx))
                                     fileMsg = (if (ok) "Restored $n alarm" + (if (n == 1) "" else "s") else "Could not restore") to ok
                                     importText = null; confirmRestore = false; bump++; onChanged()
                                 }

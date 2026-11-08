@@ -96,6 +96,27 @@ object Scheduler {
         Store.set(c, "snoozeTest", if (test) "1" else "")
     }
 
+    /** Forget a pending snooze: cancel its alarm and clear what was remembered about it. */
+    fun cancelSnooze(c: Context) {
+        try {
+            val am = c.getSystemService(AlarmManager::class.java)
+            pi(c, 9000, "FIRE", 0L, "{}", PendingIntent.FLAG_NO_CREATE)?.let { am.cancel(it); it.cancel() }
+        } catch (e: Exception) { }
+        Store.set(c, "snoozeT", "0"); Store.set(c, "snoozeCfg", ""); Store.set(c, "snoozeTest", "")
+    }
+
+    /**
+     * Called whenever the alarm list is saved. If the alarm that is snoozing was deleted, switched off or changed to another time,
+     * its snooze must not ring on its own. A test snooze is left alone.
+     */
+    fun dropOrphanedSnooze(c: Context, old: List<Alarm>, new: List<Alarm>) {
+        try {
+            val t = Store.get(c, "snoozeT").toLongOrNull() ?: return
+            if (!snoozeLive(t, System.currentTimeMillis()) || Store.get(c, "snoozeTest") == "1") return
+            if (Snooze.orphaned(old, new, Store.get(c, "snoozeCfg"))) cancelSnooze(c)
+        } catch (e: Exception) { }
+    }
+
     /**
      * The ring could not start at all. Code 9001 is outside the range scheduleAll rebuilds, so the re-arm that follows does not cancel it.
      * Like a snooze it uses setAlarmClock, which Doze never delays.

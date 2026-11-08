@@ -54,7 +54,11 @@ class RingService : Service() {
             if (v < 1f) h.postDelayed(this, 500)
         }
     }
-    private val auto = Runnable { Store.set(this, "autoStop", "1"); stopRing() }
+    private val auto = Runnable {
+        Store.set(this, "autoStop", "1")
+        try { if (Missed.shouldNotify(Settings.missedNote(this), test, timer)) Missed.post(this, label, t0, Settings.is24(this)) } catch (e: Exception) { }
+        stopRing()
+    }
 
     override fun onBind(i: Intent?): IBinder? = null
 

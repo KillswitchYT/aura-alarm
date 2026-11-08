@@ -24,6 +24,9 @@ data class Alarm(
     val minute get() = time.substringAfter(':').toInt()
 
     /** Next ring time after [now], or -1 when there is none. */
+    /** A one-off alarm whose date and time are already behind us. It can never ring, whatever its switch says. */
+    fun pastDue(now: Long = System.currentTimeMillis()): Boolean = date.isNotEmpty() && next(now) < 0
+
     fun next(now: Long = System.currentTimeMillis()): Long {
         val h = hour
         val m = minute
