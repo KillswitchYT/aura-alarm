@@ -242,6 +242,7 @@ fun AuraApp(reload: Int, startTab: Int) {
                 onNight = { night = true },
                 onChanged = { loadKey++; checks = Perms.check(ctx) },
                 switchInfo = switchInfo,
+                active = active,
             )
             1 -> WorldTab(reload * 1000 + loadKey + worldRev * 100_000, pageNow, is24, pad, seen) { picking = true }
             2 -> TimersTab(reload * 1000 + loadKey, pageNow, pad, seen)

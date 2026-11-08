@@ -8,7 +8,7 @@ Tick a line only when you saw it work. Write down anything that did not. Phone o
 - [ ] Setup tab shows 7 of 7 protections on. If not, tap Fix on each and come back.
 
 ## 1. The ring (the only thing that really matters)
-Use Setup, Test alarm now, then the real thing below.
+Use Setup, Test and status, Test alarm now, then the real thing below.
 - [ ] Test alarm with the screen on: sound, vibration, ring screen. Dismiss stops everything.
 - [ ] REAL alarm 2 minutes from now, phone locked, screen off, face down: screen turns on over the lock screen, sound plays, vibrates. Dismiss it.
 - [ ] Same with the phone locked and a secure lock (PIN or fingerprint). The ring screen still shows over the lock.
@@ -19,10 +19,10 @@ Use Setup, Test alarm now, then the real thing below.
 - [ ] Install a new build while a snooze is waiting: it still rings (new).
 - [ ] Math challenge (3 sums): wrong answer gives a new sum, right ones count, only the third one dismisses.
 - [ ] Shake challenge: 25 shakes dismisses. Phone still on the lock screen while you shake.
-- [ ] Alarm volume: Setup, Alarm volume is a free 10 to 100% slider. Drag it to about 20%, tap Play a test: quiet. Drag to 100%, test again: clearly louder. Drag it a second and third time: the thumb still follows your finger. The phone's own Ringtone, Media and Alarm sliders must NOT change how loud it is.
+- [ ] Alarm volume: Setup, Sound and ringing, Alarm volume is a free 10 to 100% slider. Drag it to about 20%, tap Play a test: quiet. Drag to 100%, test again: clearly louder. Drag it a second and third time: the thumb still follows your finger. The phone's own Ringtone, Media and Alarm sliders must NOT change how loud it is.
 - [ ] While a test is ringing, press the phone's volume down: the on-screen slider says Alarm and the sound gets quieter. After you dismiss, the next ring is back at your slider level.
 - [ ] Sound check in Setup goes off when the alarm volume slider is under 60%, and its Fix sets it to 80% by itself.
-- [ ] Volume buttons while ringing for each of the 4 settings (Setup). With a challenge on, "Dismiss" must NOT dismiss.
+- [ ] Volume buttons while ringing for each of the 4 settings (Setup, Sound and ringing). With a challenge on, "Dismiss" must NOT dismiss.
 - [ ] Leave one ringing untouched: it stops by itself after 10 minutes.
 
 ## 2. Surviving restarts
@@ -83,13 +83,13 @@ Use Setup, Test alarm now, then the real thing below.
 ## 10. Look and glass (after the no-boxes pass)
 - [ ] Every button, chip, close icon, toggle, slider and the dismiss slide is the same glass family (rim highlight, slight blur). Nothing looks like a flat grey pill next to the glass ones.
 - [ ] Alarms, World, Timers, Stopwatch and Setup have no boxes around rows. Rows are separated by faint lines.
-- [ ] Setup: with 7 of 7 protections on, the seven rows fold into one "All 7 protections are on" row; tap it to open them, "Hide" folds them again. Turn one protection off in system settings: they unfold by themselves.
+- [ ] Setup, Protection: all 7 checks are listed with On or Fix next to each (the old fold-into-one-row is gone, the checks now live on their own screen). Turn one protection off in system settings: they unfold by themselves.
 - [ ] Setup alarm volume slider (the library one) is the accent colour (orange in dark, blue in light), not purple, and moves smoothly; the percent next to it follows.
 - [ ] Open the alarm editor and the city picker: chips, day letters and the time button inside the sheet are glass too.
-- [ ] Scroll the Setup tab and switch tabs: does anything stutter more than before? The ms meter at the bottom of Setup says how bad.
+- [ ] Scroll the Setup tab and switch tabs: does anything stutter more than before? The ms meter in Setup, About says how bad.
 
 ## 11. Speed
-- [ ] Setup, bottom: after you have tapped through the tabs, it lists each tab as "first visit X ms, after that Y ms". Send me that whole block. Under 50 is smooth, over 100 you feel it.
+- [ ] Setup, About (bottom): after you have tapped through the tabs, it lists each tab as "first visit X ms, after that Y ms". Send me that whole block. Under 50 is smooth, over 100 you feel it.
 - [ ] Wait about 5 seconds after opening the app before tapping tabs (it is pre-loading them). Does the first visit feel better than before?
 - [ ] "Aura Alarm (fast)": a second, optimized copy (its own app, its own alarms, safe to delete). Install it from the Releases page (app-fast.apk), open the tabs, and compare the numbers and the feel with the normal app. If the fast one is smooth and the normal one is not, the lag is mostly the debug build.
 - [ ] Tabs stay alive now: scroll Setup down, switch away and back: your scroll position is kept. Type 5 0 0 on the Timers numpad, switch away and back: it is still there. (This is on purpose.)
@@ -98,14 +98,14 @@ Use Setup, Test alarm now, then the real thing below.
 - [ ] With the Stopwatch running, switch to another tab and back: the time kept counting and the digits are right at once.
 
 ## 12. Light mode
-- [ ] Setup, Appearance, Theme dropdown: tap it, three choices open (Match phone, Dark, Light). Picking one repaints the whole app straight away, no restart.
+- [ ] Setup, Appearance and time, Theme: three choices (Match phone, Dark, Light), the picked one has a check. Picking one repaints the whole app straight away, no restart.
 - [ ] Light: every word is readable on every tab (Alarms, World, Timers, Stopwatch, Setup), including the small grey captions, the "On" and "Fix" words in Setup and the red "Quiet" warning.
 - [ ] Light: the clock ring, toggles, the New alarm and Start buttons are iPhone-style blue (white text on the buttons) and stand out clearly from the light background. Dark mode is still orange.
 - [ ] Light: the blue words (the countdown, Fix, the next alarm time) are a slightly deeper blue and easy to read. The glass blue buttons are a lighter blue than the toggle fill, that is the glass library doing its thing, but the white text on them must still read clearly.
 - [ ] Light: the glass pieces (tab bar, New alarm, chips, toggles, volume slider) look like light glass, not dark patches. The alarm editor and city picker sheets are light too.
 - [ ] Light: the phone's clock and battery icons at the top are dark (readable), and the bottom navigation icons too.
 - [ ] Match phone: switch your phone between dark and light in system settings while the app is open: the app follows.
-- [ ] The ring screen (Setup, Test alarm now) is ALWAYS dark, even in light mode. After you dismiss it the app is light again.
+- [ ] The ring screen (Setup, Test and status, Test alarm now) is ALWAYS dark, even in light mode. After you dismiss it the app is light again.
 - [ ] Night clock is black and dim red in both themes.
 - [ ] Your choice survives closing the app, and an exported backup restores it.
 - [ ] Not done on purpose: the home-screen widget keeps its own colours.
@@ -116,3 +116,18 @@ Use Setup, Test alarm now, then the real thing below.
 - [ ] DAMAGED BACKUP. On a PC or in a text app, make a file named `bad.json` containing exactly: {"al":[{"t":"7am","l":"broken","on":1},{"t":"08:15","l":"fine","on":1}]}  Setup, Import from file, pick it, restore. PASS: the app does NOT crash. "fine" is on at 8:15. "broken" is there at 7:00 and switched OFF, so nothing rings at a time you never chose. Before this fix the app crashed every time you opened it.
 - [ ] Phone language set to Arabic (or any language with its own digits): create an alarm and a one-off dated alarm, export a backup file and open it in a text app: times and dates are plain 0-9 digits like 07:30 and 2026-12-05.
 - [ ] Not field-testable: the new ring retry (the ring could not start at all, so it tries again every 20 s up to 6 times). It only runs when both the foreground service and the loud notification fail, which I cannot make happen on purpose. It is covered by engine tests of the order of steps only. Scheduler.retryRing itself has never run.
+
+## 14. Toggles and the reorganised Setup (build after 3.1.28)
+- [ ] TOGGLES. Open an alarm, tap "Fade in" (or any switch that is off): it turns ON by a tap. Now tap the same switch again: it turns OFF by a tap, no dragging. Repeat 4 times in a row, it must alternate every time. Same for the alarm switches in the list and the Bedtime reminder switch. (Before: a tap could only turn things on.)
+- [ ] Toggle an alarm off and on, then add a second alarm and toggle the FIRST alarm again: the second alarm must still be there (a stale save used to be possible).
+- [ ] Bedtime: set Sleep goal to 9 h, THEN switch the reminder on: the goal must still say 9 h.
+- [ ] SETUP HUB. Setup now opens on a list: search field, then Reliability (Protection, Test and status), Alarms (Sound and ringing, Bedtime, Night clock), App (Appearance and time, Backup, About). The grey blocks around those rows are intended, they follow your reference picture.
+- [ ] Tap each row: its screen slides in with a back button and big title. Back button and the phone's back gesture both return to the list. Back from the list leaves the app as before.
+- [ ] Protection: 7 checks with On or Fix, then the 4 Fixes. Tapping Fix on a check and each Fix works exactly as before.
+- [ ] Test and status: Test alarm now rings, Self-test runs and lists results, Last fired and Backup ring show, the red "backup fired" note and Clear show when they apply.
+- [ ] Sound and ringing: volume slider and Play a test, the 3 ring styles, the 4 volume-button chips all work and keep their value after you leave and come back.
+- [ ] Appearance and time: theme and 12/24-hour choices work, repaint straight away.
+- [ ] Backup: Export to file, Import from file, Restore, Cancel as before. About shows the version (3.1.x), privacy lines and the frame meter after you tapped through the tabs.
+- [ ] Search: type "volume": Alarm volume, Volume buttons, Raise alarm volume appear. Tap one: it opens the right screen. Type "zzzz": a "Nothing in Setup matches" message. The x clears the search.
+- [ ] The hub shows a live summary on each row (All on or "2 need attention", Last fired time, "80%  ·  Standard", Bedtime On/Off, theme name).
+- [ ] Light mode: blocks, search field and rows are readable. Dark mode: the same.

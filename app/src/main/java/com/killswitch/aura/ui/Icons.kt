@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 
-enum class Ic { Alarm, World, Timer, Stopwatch, Setup, Plus, Chevron, Trash, Play, Alert, Search, Close, Pause, Check, Copy, Backspace }
+enum class Ic { Alarm, World, Timer, Stopwatch, Setup, Plus, Chevron, Trash, Play, Alert, Search, Close, Pause, Check, Copy, Backspace, Shield, Volume, Sleep, Moon, Sun, Backup, Info }
 
 /** Tiny stroke icons drawn on a canvas, so the app needs no icon library. */
 @Composable
@@ -81,6 +81,53 @@ fun Icon(kind: Ic, color: Color, modifier: Modifier = Modifier.size(24.dp)) {
                 drawRoundRect(color, Offset(s * .36f, s * .34f), Size(s * .46f, s * .52f), CornerRadius(s * .07f), style = st)
             }
             Ic.Search -> { drawCircle(color, s * .26f, Offset(s * .44f, s * .44f), style = st); line(.64f, .64f, .86f, .86f) }
+            Ic.Shield -> {
+                val p = Path().apply {
+                    moveTo(s * .5f, s * .12f); lineTo(s * .84f, s * .26f); lineTo(s * .84f, s * .52f)
+                    lineTo(s * .5f, s * .88f); lineTo(s * .16f, s * .52f); lineTo(s * .16f, s * .26f); close()
+                }
+                drawPath(p, color, style = st)
+                line(.35f, .5f, .46f, .61f); line(.46f, .61f, .66f, .39f)
+            }
+            Ic.Volume -> {
+                val p = Path().apply {
+                    moveTo(s * .14f, s * .4f); lineTo(s * .32f, s * .4f); lineTo(s * .54f, s * .2f)
+                    lineTo(s * .54f, s * .8f); lineTo(s * .32f, s * .6f); lineTo(s * .14f, s * .6f); close()
+                }
+                drawPath(p, color, style = st)
+                drawArc(color = color, startAngle = -50f, sweepAngle = 100f, useCenter = false, topLeft = Offset(s * .38f, s * .3f), size = Size(s * .4f, s * .4f), style = st)
+                drawArc(color = color, startAngle = -50f, sweepAngle = 100f, useCenter = false, topLeft = Offset(s * .38f, s * .14f), size = Size(s * .72f, s * .72f), style = st)
+            }
+            Ic.Sleep -> {
+                line(.2f, .32f, .5f, .32f); line(.5f, .32f, .2f, .66f); line(.2f, .66f, .5f, .66f)
+                line(.6f, .16f, .82f, .16f); line(.82f, .16f, .6f, .4f); line(.6f, .4f, .82f, .4f)
+            }
+            Ic.Moon -> {
+                val p = Path().apply {
+                    moveTo(s * .62f, s * .14f)
+                    cubicTo(s * .30f, s * .18f, s * .16f, s * .46f, s * .28f, s * .68f)
+                    cubicTo(s * .40f, s * .88f, s * .68f, s * .90f, s * .86f, s * .70f)
+                    cubicTo(s * .58f, s * .72f, s * .46f, s * .42f, s * .62f, s * .14f)
+                    close()
+                }
+                drawPath(p, color, style = st)
+            }
+            Ic.Sun -> {
+                drawCircle(color, s * .17f, c, style = st)
+                for (i in 0 until 8) {
+                    val a = i * Math.PI / 4
+                    val ca = Math.cos(a).toFloat(); val sa = Math.sin(a).toFloat()
+                    line(.5f + .28f * ca, .5f + .28f * sa, .5f + .4f * ca, .5f + .4f * sa)
+                }
+            }
+            Ic.Backup -> {
+                drawRoundRect(color, Offset(s * .2f, s * .12f), Size(s * .6f, s * .76f), CornerRadius(s * .08f), style = st)
+                line(.5f, .32f, .5f, .66f); line(.37f, .54f, .5f, .67f); line(.63f, .54f, .5f, .67f)
+            }
+            Ic.Info -> {
+                drawCircle(color, s * .38f, c, style = st)
+                line(.5f, .46f, .5f, .68f); drawCircle(color, s * .035f, Offset(s * .5f, s * .31f))
+            }
         }
     }
 }
