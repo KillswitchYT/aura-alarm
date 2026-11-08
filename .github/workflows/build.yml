@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# A newer push replaces an older run, so a slow ring test never fights the next build over the logs branch.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -64,6 +69,14 @@ jobs:
         run: |
           set -o pipefail
           ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee build-fast.log
+
+      # The ring test (job below) installs exactly this file on an emulator.
+      - name: Keep the optimized APK for the ring test
+        uses: actions/upload-artifact@v4
+        with:
+          name: aura-fast-apk
+          path: ${{ steps.p.outputs.dir }}/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: warn
 
       # The APK as a release: on a phone, open the repo's Releases page and tap app-debug.apk.
       - name: Publish the APK as a release
@@ -122,3 +135,58 @@ jobs:
           git add .
           git commit -qm "logs for run $GITHUB_RUN_ID"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" build-logs
+
+  # The "fake phone". It runs after the build, on its own, and can never stop the APKs from being published: a flaky emulator
+  # is reported in branch build-logs (ring-result.txt, ring-test.log) and nowhere else.
+  ring-test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: aura-fast-apk
+          path: apk
+
+      # Lets the emulator use the machine's hardware acceleration.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Ring test on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash tools/ci/ring-test.sh apk/app-release.apk com.killswitch.aura.fast
+
+      - name: Show the result on the run page
+        if: always()
+        run: |
+          {
+            echo "### Ring test"
+            echo '```'
+            cat ring-result.txt 2>/dev/null || echo "the ring test did not run"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish the ring test to branch build-logs
+        if: always()
+        run: |
+          mkdir -p /tmp/rt && cd /tmp/rt
+          URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git clone -q --depth 1 --branch build-logs "$URL" . || git init -q -b build-logs
+          cp "$GITHUB_WORKSPACE/ring-test.log" ring-test.log 2>/dev/null || echo "the ring test did not run" > ring-test.log
+          cp "$GITHUB_WORKSPACE/ring-result.txt" ring-result.txt 2>/dev/null || echo "no result: the ring test did not run" > ring-result.txt
+          echo "run $GITHUB_RUN_ID, commit $GITHUB_SHA" > ring-run.txt
+          git config user.name ci; git config user.email ci@users.noreply.github.com
+          git add -A; git commit -qm "ring test for run $GITHUB_RUN_ID" || true
+          git push "$URL" HEAD:build-logs
