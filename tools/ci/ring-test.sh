@@ -102,7 +102,7 @@ phase_ring() {
 # 2. An alarm survives the phone restarting. Two ways, because an emulator is bad at restarting inside CI:
 #    simulated (wipe the app's alarms the way a restart does, then send the boot message by hand), then a real restart with hard time limits.
 phase_reboot() {
-  local th tm lead n i out sim real=0
+  local th tm lead n i out sim real=0 up0 up1
   adbx am force-stop "$PKG" > /dev/null; sleep 3
   read -r th tm lead < <(plan_time 25)
   log "setting an alarm for $th:$(printf %02d "$tm") to carry through a restart"
@@ -123,15 +123,23 @@ phase_reboot() {
   fi
 
   log "now a real restart, with time limits"
-  adb reboot; sleep 20
-  if timeout 240 adb wait-for-device; then
-    for i in $(seq 1 60); do [ "$(adbx getprop sys.boot_completed)" = "1" ] && break; sleep 3; done
+  up0=$(adbx cat /proc/uptime | cut -d. -f1)
+  adb reboot
+  # first wait until the phone really goes away, so "still there" cannot be mistaken for "came back"
+  for i in $(seq 1 30); do [ "$(adb get-state 2>/dev/null | tr -d '\r')" = "device" ] || break; sleep 2; done
+  if timeout 300 adb wait-for-device; then
+    for i in $(seq 1 90); do [ "$(adbx getprop sys.boot_completed)" = "1" ] && break; sleep 3; done
+    up1=$(adbx cat /proc/uptime | cut -d. -f1)
     sleep 30   # the boot receiver needs a moment
-    n=$(pending)
-    if [ "${n:-0}" -ge 1 ]; then note "RESTART(real): PASS $n alarm(s) were there after a real restart"; real=0
-    else note "RESTART(real): FAIL after a real restart the alarm was gone"; diagnostics; real=1; fi
+    if ! [[ "${up1:-x}" =~ ^[0-9]+$ ]] || ! [[ "${up0:-x}" =~ ^[0-9]+$ ]] || [ "$up1" -ge "$up0" ]; then
+      note "RESTART(real): INCONCLUSIVE the phone's uptime did not reset (was ${up0:-?} s, now ${up1:-?} s), so it did not really restart. That says nothing about the app"; real=2
+    else
+      n=$(pending)
+      if [ "${n:-0}" -ge 1 ]; then note "RESTART(real): PASS the phone really restarted (uptime ${up0} s -> ${up1} s) and $n alarm(s) were there afterwards"; real=0
+      else note "RESTART(real): FAIL the phone really restarted (uptime ${up0} s -> ${up1} s) and the alarm was gone"; diagnostics; real=1; fi
+    fi
   else
-    note "RESTART(real): INCONCLUSIVE the emulator did not come back within 4 minutes, which says nothing about the app"; real=2
+    note "RESTART(real): INCONCLUSIVE the emulator did not come back within 5 minutes, which says nothing about the app"; real=2
   fi
   [ "$sim" -ne 1 ] && [ "$real" -ne 1 ]
 }
