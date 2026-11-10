@@ -55,42 +55,36 @@ jobs:
           echo "gradlew found at: $g"
           echo "dir=$(dirname "$g")" >> "$GITHUB_OUTPUT"
 
-      - name: Build debug APK
+      # The optimized (R8) build is the app: one APK, signed with the fixed project key, so it installs over the debug build before it.
+      - name: Build the app (optimized)
         working-directory: ${{ steps.p.outputs.dir }}
         run: |
           set -o pipefail
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
-
-      # Experimental: the optimized copy. A failure here must never stop the debug APK from being published.
-      - name: Build optimized APK (separate app)
-        continue-on-error: true
-        working-directory: ${{ steps.p.outputs.dir }}
-        run: |
-          set -o pipefail
-          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee build-fast.log
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
 
       # The ring test (job below) installs exactly this file on an emulator.
-      - name: Keep the optimized APK for the ring test
+      - name: Keep the APK for the ring test
         uses: actions/upload-artifact@v4
         with:
-          name: aura-fast-apk
+          name: aura-apk
           path: ${{ steps.p.outputs.dir }}/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: warn
 
-      # The APK as a release: on a phone, open the repo's Releases page and tap app-debug.apk.
+      # The APK as a release: on a phone, open the repo's Releases page and tap AuraAlarm.apk. mapping.txt is only for decoding crash traces.
       - name: Publish the APK as a release
         if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           d="${{ steps.p.outputs.dir }}"
-          cp "$d/app/build/outputs/apk/debug/app-debug.apk" app-debug.apk
-          files="app-debug.apk"
-          if [ -f "$d/app/build/outputs/apk/release/app-release.apk" ]; then cp "$d/app/build/outputs/apk/release/app-release.apk" app-fast.apk; files="$files app-fast.apk"; fi
+          cp "$d/app/build/outputs/apk/release/app-release.apk" AuraAlarm.apk
+          files="AuraAlarm.apk"
+          m="$d/app/build/outputs/mapping/release/mapping.txt"
+          if [ -f "$m" ]; then cp "$m" mapping.txt; files="$files mapping.txt"; fi
           gh release delete latest --cleanup-tag -y --repo "${{ github.repository }}" 2>/dev/null || true
           gh release create latest $files --repo "${{ github.repository }}" --target "$GITHUB_SHA" --prerelease \
-            --title "Latest debug build" --notes "Built from commit ${GITHUB_SHA::7}. Debug-signed with the fixed project key, so it updates over the previous build."
+            --title "Latest build" --notes "Built from commit ${GITHUB_SHA::7}. Optimized, signed with the fixed project key, so it updates over the previous build."
 
       - name: Show errors on the run page
         if: always()
@@ -107,9 +101,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: aura-debug-apk
+          name: aura-release-apk
           path: |
-            ${{ steps.p.outputs.dir }}/app/build/outputs/apk/debug/*.apk
+            ${{ steps.p.outputs.dir }}/app/build/outputs/apk/release/*.apk
             ${{ steps.p.outputs.dir }}/build.log
             sdk.log
           if-no-files-found: warn
@@ -122,9 +116,6 @@ jobs:
           mkdir -p /tmp/out
           cp "$d/build.log" /tmp/out/build.log 2>/dev/null || echo "no build log was produced (build step did not run)" > /tmp/out/build.log
           cp sdk.log /tmp/out/sdk.log 2>/dev/null || echo "no sdk log" > /tmp/out/sdk.log
-          cp "$d/build-fast.log" /tmp/out/build-fast.log 2>/dev/null || echo "no optimized build log" > /tmp/out/build-fast.log
-          { grep -E '^e: |What went wrong|error:|FAILURE|Missing class|R8' /tmp/out/build-fast.log | head -60 || true; } > /tmp/out/errors-fast.txt
-          [ -s /tmp/out/errors-fast.txt ] || echo "no errors found" > /tmp/out/errors-fast.txt
           { cat /tmp/out/sdk.log /tmp/out/build.log | grep -E '^e: |What went wrong|error:|FAILURE|failed|Failed' | head -80 || true; } > /tmp/out/errors.txt
           [ -s /tmp/out/errors.txt ] || echo "no errors found" > /tmp/out/errors.txt
           echo "run $GITHUB_RUN_ID, commit $GITHUB_SHA" > /tmp/out/run.txt
@@ -148,8 +139,15 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          name: aura-fast-apk
+          name: aura-apk
           path: apk
+
+      # The build you have installed now, to test the update you will do: this one installed over it, keeping its alarms.
+      - name: Fetch the previous debug build for the update test
+        run: |
+          mkdir -p old
+          curl -sSL --fail -o old/previous.apk "https://raw.githubusercontent.com/${{ github.repository }}/backup-3.1.33/backup/app-debug-3.1.33.apk"
+          ls -l old/previous.apk
 
       # Lets the emulator use the machine's hardware acceleration.
       - name: Enable KVM
@@ -166,7 +164,7 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: timeout 1200 bash tools/ci/ring-test.sh apk/app-release.apk com.killswitch.aura.fast
+          script: timeout 1500 bash tools/ci/ring-test.sh apk/app-release.apk com.killswitch.aura old/previous.apk
 
       - name: Show the result on the run page
         if: always()

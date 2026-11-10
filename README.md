@@ -17,9 +17,15 @@ Apache-2.0 licence (third_party/). `ui/AuraApp.kt` shows the pattern: one `layer
 and glass pieces float above it and refract it. Lens refraction needs Android 13, blur needs Android 12.
 
 ## Build on GitHub (no PC needed)
-`.github/workflows/build.yml` builds on every push to main and on "Run workflow". The APK lands on the repo's Releases page
-as `app-debug.apk`, and a log of the build is pushed to the `build-logs` branch. Debug builds use the fixed key in
-`app/debug.keystore` (the standard public "android" credentials), so each build installs over the last one.
+`.github/workflows/build.yml` builds on every push to main and on "Run workflow". There is ONE app, optimized with R8. The APK lands
+on the repo's Releases page as `AuraAlarm.apk` (plus `mapping.txt`, only for decoding crash traces), and a log of the build is pushed
+to the `build-logs` branch. Every build uses the fixed key in `app/debug.keystore` (the standard public "android" credentials), so each
+build installs over the last one, including over the earlier debug builds.
+
+After the build, a second job boots an Android emulator and runs `tools/ci/ring-test.sh` against that exact APK: it installs the
+previous debug build and updates over it, sets a real alarm and checks the MAIN alarm rings on time, and checks alarms survive a
+restart (simulated and real). The verdict is `ring-result.txt` on `build-logs`. An emulator is not a phone: this proves the ring
+starts and survives, not that you hear it or that Samsung leaves the app alone.
 
 ## Build loop (for an assistant with a sandbox)
 `tools/ci/cycle.sh "message"` pushes the project to KillswitchYT/aura-alarm, waits for the Actions build (about 3 minutes)
@@ -30,7 +36,7 @@ run Gradle itself. GitHub does the compiling.
 ## Build
 Needs JDK 17+ and the Android SDK (platform 37, build-tools 37.0.0). Set `sdk.dir` in `local.properties`.
 
-    ./gradlew assembleDebug      # app/build/outputs/apk/debug/app-debug.apk
+    ./gradlew assembleRelease    # app/build/outputs/apk/release/app-release.apk (this is the app; assembleDebug still works for a local debug build)
 
 Toolchain mirrors the glass library: Gradle 9.7.1 (downloaded from GitHub), AGP 9.3.2, Kotlin 2.4.10, Compose 1.12.0,
 io.github.kyant0:backdrop 2.0.1. targetSdk stays at 34 on purpose.

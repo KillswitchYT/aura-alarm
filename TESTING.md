@@ -91,7 +91,7 @@ Use Setup, Test and status, Test alarm now, then the real thing below.
 ## 11. Speed
 - [ ] Setup, About (bottom): after you have tapped through the tabs, it lists each tab as "first visit X ms, after that Y ms". Send me that whole block. Under 50 is smooth, over 100 you feel it.
 - [ ] Wait about 5 seconds after opening the app before tapping tabs (it is pre-loading them). Does the first visit feel better than before?
-- [ ] "Aura Alarm (fast)": a second, optimized copy (its own app, its own alarms, safe to delete). Install it from the Releases page (app-fast.apk), open the tabs, and compare the numbers and the feel with the normal app. If the fast one is smooth and the normal one is not, the lag is mostly the debug build.
+- [x] The optimized build is now THE app (there is no separate "fast" copy any more). The speed comparison is done.
 - [ ] Tabs stay alive now: scroll Setup down, switch away and back: your scroll position is kept. Type 5 0 0 on the Timers numpad, switch away and back: it is still there. (This is on purpose.)
 - [ ] The fade-in of each list still plays every time you arrive on a tab.
 - [ ] A hidden tab never reacts to touches: tap in empty space on any tab and check nothing opens or toggles that belongs to another tab.
@@ -150,3 +150,11 @@ Use Setup, Test and status, Test alarm now, then the real thing below.
 - [ ] A test alarm's snooze (10 s) still rings even if you save alarms meanwhile.
 - [ ] GLASS. The grouped blocks in Setup and the search field are library glass now: a lighter panel with a soft rim that picks up the background, not a flat grey box. The alarm list rows stay without boxes on purpose.
 - [ ] Not on a device yet: all of the above, the slider gesture most of all.
+
+## 16. The one optimized app (3.1.34 onwards)
+Before this, three real alarms were tested on the optimized build on your phone: rings with the screen on, rings over the lock screen, and rings after a restart. All three rang. CI also ran the same alarms on an emulator.
+- [ ] UPDATE. Install AuraAlarm.apk over the app you have. It says "Update", not "Install" and not a signature error. Your alarms and settings are all still there. Open Setup: it still says 7 of 7 protections on (if it does not, tap Protection and press Fix on what is missing).
+- [ ] Uninstall "Aura Alarm (fast)" so two alarm apps are never armed at once.
+- [ ] After the update, run ONE test alarm 3 minutes out, phone locked. It rings. (This is the same file that was tested, but it is a different package from the test copy, so the check is cheap insurance.)
+- [ ] Setup, Test and status, Test alarm now: rings, slide to dismiss works.
+- [ ] If anything crashes, tell me the time it happened. The crash trace can be decoded with the mapping.txt published with every build.

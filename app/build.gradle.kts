@@ -20,16 +20,13 @@ android {
     }
 
     buildTypes {
-        // An optimized copy (R8) for judging speed. A debug build runs cold, unoptimized code and feels slower than the real thing.
-        // It is a separate app (own id, own alarms) signed with the same key, so installing it never touches the main one.
+        // The app you install is this one: optimized with R8 (a debug build runs cold, unoptimized code and feels slower).
+        // Same package and the same fixed key as the debug builds before it, so it installs over them and keeps their alarms.
         release {
             isMinifyEnabled = true
             isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("debug")
-            applicationIdSuffix = ".fast"
-            versionNameSuffix = "-fast"
-            manifestPlaceholders["appLabel"] = "Aura Alarm (fast)"
         }
     }
 

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # The "fake phone" ring test. CI runs it on an Android emulator against the OPTIMIZED apk, the one that may become the real app.
-#   tools/ci/ring-test.sh <apk> <package>
+#   tools/ci/ring-test.sh <apk> <package> [previous-apk]
 # It does what a person does. It installs the app, sets a real alarm through the app's own voice-assistant door (SET_ALARM), waits, and
 # checks that the phone rang it. Then it sets another alarm, restarts the phone, and checks the alarm was put back.
 # HONEST LIMITS: an emulator is not a Samsung, and its audio is off. This proves "the ring starts and survives a restart", not "you hear it".
 set -u
-APK="${1:?need the apk path}"; PKG="${2:?need the package name}"
+APK="${1:?need the apk path}"; PKG="${2:?need the package name}"; OLD="${3:-}"
 RESULT="${RESULT:-ring-result.txt}"; LOG="${LOG:-ring-test.log}"
 : > "$RESULT"; : > "$LOG"
 exec > >(tee -a "$LOG") 2>&1
@@ -60,6 +60,9 @@ diagnostics() {
   adb logcat -d -t 250 2>&1 | tr -d '\r' | tail -120
 }
 
+version_code() { adbx dumpsys package "$PKG" | grep -m1 -o "versionCode=[0-9]*" | cut -d= -f2; }
+debuggable()   { adbx dumpsys package "$PKG" | grep -m1 -c "DEBUGGABLE"; }
+
 # 0. The parts the phone calls by name must still be in the optimized app.
 phase_static() {
   local dex missing=0 c; dex=$(mktemp)
@@ -70,6 +73,27 @@ phase_static() {
   rm -f "$dex"
   [ "$missing" -eq 0 ] && note "STATIC: PASS all 6 parts the phone calls by name are in the optimized app"
   return "$missing"
+}
+
+# 0b. The update you will do on your phone: the build you have now replaced by this one, keeping its alarms.
+phase_update() {
+  local th tm lead n v0 v1 out d0 d1 straight
+  out=$(adb install -r -g "$OLD" 2>&1 | tr -d '\r' | tail -3)
+  if ! echo "$out" | grep -q Success; then note "UPDATE: INCONCLUSIVE the previous build would not install, so there was nothing to update over ($out)"; return 2; fi
+  v0=$(version_code); d0=$(debuggable)
+  adbx input keyevent KEYCODE_WAKEUP > /dev/null; adbx wm dismiss-keyguard > /dev/null
+  read -r th tm lead < <(plan_time 40)
+  set_alarm "$th" "$tm" "updatetest"
+  n=$(wait_armed)
+  if [ "$n" -lt 1 ]; then note "UPDATE: INCONCLUSIVE the previous build did not arm an alarm to carry over"; return 2; fi
+  out=$(adb install -r -g "$APK" 2>&1 | tr -d '\r' | tail -3)
+  if ! echo "$out" | grep -q Success; then note "UPDATE: FAIL installing over the previous build was refused: $out"; return 1; fi
+  v1=$(version_code); d1=$(debuggable); straight=$(pending)
+  n=$(wait_armed)
+  if [ "${v1:-0}" -le "${v0:-0}" ]; then note "UPDATE: FAIL the version did not go up ($v0 -> $v1)"; return 1; fi
+  if [ "${n:-0}" -lt 1 ]; then note "UPDATE: FAIL the update wiped the alarm and the app did not put it back"; diagnostics; return 1; fi
+  note "UPDATE: PASS the new app installed over the previous build (version $v0 -> $v1, debuggable $d0 -> $d1) and $n alarm(s) were there afterwards ($straight right after the install)"
+  return 0
 }
 
 # 1. A real alarm rings. The point is to know WHICH alarm rang: the main one on time, or only the backup 2 minutes later.
@@ -148,10 +172,12 @@ log "apk: $APK  package: $PKG"
 phase_static; s=$?
 adb wait-for-device
 adbx input keyevent KEYCODE_WAKEUP > /dev/null; adbx wm dismiss-keyguard > /dev/null
+u=0
+if [ -n "$OLD" ]; then phase_update; u=$?; else u=3; fi
 if ! adb install -r -g "$APK" 2>&1 | tr -d '\r' | tail -3 | grep -q Success; then note "INSTALL: FAIL the optimized app would not install"; exit 1; fi
 note "INSTALL: PASS"
 phase_ring; r=$?
 phase_reboot; b=$?
 note "----"
-note "SUMMARY: static=$([ $s -eq 0 ] && echo pass || echo FAIL) ring=$([ $r -eq 0 ] && echo pass || echo FAIL) restart=$([ $b -eq 0 ] && echo pass-or-inconclusive || echo FAIL)  (read the RESTART lines: INCONCLUSIVE means the emulator could not do it, not that the app failed)"
-[ $((s + r + b)) -eq 0 ]
+note "SUMMARY: static=$([ $s -eq 0 ] && echo pass || echo FAIL) update=$(case $u in 0) echo pass;; 2) echo inconclusive;; 3) echo skipped;; *) echo FAIL;; esac) ring=$([ $r -eq 0 ] && echo pass || echo FAIL) restart=$([ $b -eq 0 ] && echo pass-or-inconclusive || echo FAIL)  (read the RESTART lines: INCONCLUSIVE means the emulator could not do it, not that the app failed)"
+[ $((s + r + b)) -eq 0 ] && [ "$u" -ne 1 ]
