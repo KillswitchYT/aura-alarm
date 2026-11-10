@@ -1,0 +1,19 @@
+[13:00:52] apk: apk/app-release.apk  package: com.killswitch.aura
+STATIC: PASS all 6 parts the phone calls by name are in the optimized app
+Starting: Intent { act=android.intent.action.SET_ALARM cmp=com.killswitch.aura/.MainActivity (has extras) }
+UPDATE: PASS the new app installed over the previous build (version 133 -> 136, debuggable 1 -> 0) and 3 alarm(s) were there afterwards (3 right after the install)
+INSTALL: PASS
+[13:01:07] setting an alarm for 13:03 on the phone's clock, due in about 113s
+Starting: Intent { act=android.intent.action.SET_ALARM cmp=com.killswitch.aura/.MainActivity (has extras) }
+RING: the app armed 3 alarm(s) (the alarm itself, its 2-minute backup, and whatever else it keeps)
+    RTC_WAKEUP #11: Alarm{66a4a12 type 0 origWhen 1794318060000 whenElapsed 2449189 com.killswitch.aura}
+    RTC_WAKEUP #12: Alarm{5254d3f type 0 origWhen 1794318180000 whenElapsed 2569189 com.killswitch.aura}
+    Next wake from idle: Alarm{66a4a12 type 0 origWhen 1794318060000 whenElapsed 2449189 com.killswitch.aura}
+RING: PASS the MAIN alarm rang on time (the ring service started 114 s after it was set, due at 113 s)
+[13:03:05] setting an alarm for 13:28 to carry through a restart
+Starting: Intent { act=android.intent.action.SET_ALARM cmp=com.killswitch.aura/.MainActivity (has extras) }
+RESTART(simulated): PASS the boot message made the app put 5 alarm(s) back
+[13:03:22] now a real restart, with time limits
+RESTART(real): PASS the phone really restarted (uptime 191 s -> 21 s) and 5 alarm(s) were there afterwards
+----
+SUMMARY: static=pass update=pass ring=pass restart=pass-or-inconclusive  (read the RESTART lines: INCONCLUSIVE means the emulator could not do it, not that the app failed)

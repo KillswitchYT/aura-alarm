@@ -1,0 +1,9 @@
+STATIC: PASS all 6 parts the phone calls by name are in the optimized app
+UPDATE: PASS the new app installed over the previous build (version 133 -> 136, debuggable 1 -> 0) and 3 alarm(s) were there afterwards (3 right after the install)
+INSTALL: PASS
+RING: the app armed 3 alarm(s) (the alarm itself, its 2-minute backup, and whatever else it keeps)
+RING: PASS the MAIN alarm rang on time (the ring service started 114 s after it was set, due at 113 s)
+RESTART(simulated): PASS the boot message made the app put 5 alarm(s) back
+RESTART(real): PASS the phone really restarted (uptime 191 s -> 21 s) and 5 alarm(s) were there afterwards
+----
+SUMMARY: static=pass update=pass ring=pass restart=pass-or-inconclusive  (read the RESTART lines: INCONCLUSIVE means the emulator could not do it, not that the app failed)
