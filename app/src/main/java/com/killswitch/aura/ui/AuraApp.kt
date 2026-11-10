@@ -56,6 +56,7 @@ import com.killswitch.aura.Perms
 import com.killswitch.aura.Scheduler
 import com.killswitch.aura.Settings
 import com.killswitch.aura.Store
+import com.killswitch.aura.Weekend
 import com.killswitch.aura.WorldClock
 import com.killswitch.aura.glass.LiquidBottomTab
 import com.killswitch.aura.glass.LiquidBottomTabs
@@ -109,6 +110,8 @@ fun AuraApp(reload: Int, startTab: Int) {
     var checks by remember { mutableStateOf(Perms.check(ctx)) }
     var editing by remember { mutableIntStateOf(NONE) }
     var picking by remember { mutableStateOf(false) }
+    var notice by remember { mutableStateOf<Pair<String, String>?>(null) } // a title and a message for the glass dialog
+    remember { Weekend.apply(Settings.weekendMode(ctx)); 0 } // the weekend the day labels use
     var night by remember { mutableStateOf(false) }
     var worldRev by remember { mutableIntStateOf(0) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -245,6 +248,7 @@ fun AuraApp(reload: Int, startTab: Int) {
                 onChanged = { loadKey++; checks = Perms.check(ctx) },
                 switchInfo = switchInfo,
                 active = active,
+                onNotice = { t, m -> notice = t to m },
             )
             1 -> WorldTab(reload * 1000 + loadKey + worldRev * 100_000, pageNow, is24, pad, seen) { picking = true }
             2 -> TimersTab(reload * 1000 + loadKey, pageNow, pad, seen)
@@ -339,6 +343,8 @@ fun AuraApp(reload: Int, startTab: Int) {
                 )
             }
         }
+
+        notice?.let { (t, m) -> NoticeDialog(backdrop, t, m) { notice = null } }
 
         if (night) NightClock(is24, now) { night = false }
     }

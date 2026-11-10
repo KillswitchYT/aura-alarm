@@ -182,6 +182,7 @@ fun Editor(
                     DayDot(l, d in days) { days = if (d in days) days - d else days + d; date = "" }
                 }
             }
+            if (days.isNotEmpty() && date.isEmpty()) BasicText(Alarm(days = days).daysSummary(), Modifier.padding(top = 8.dp), style = ts(13f, Aura.Muted))
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ChipButton(if (date.isEmpty()) "Pick a date" else "One-off on $date", date.isNotEmpty()) { pickDate() }
                 if (date.isNotEmpty()) ChipButton("Clear date", false) { date = "" }

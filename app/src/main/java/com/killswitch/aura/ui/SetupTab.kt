@@ -59,6 +59,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.killswitch.aura.AlarmReceiver
+import com.killswitch.aura.AuraFile
+import com.killswitch.aura.Days
+import com.killswitch.aura.Weekend
 import com.killswitch.aura.Backup
 import com.killswitch.aura.Bed
 import com.killswitch.aura.Check
@@ -123,7 +126,8 @@ private val INDEX = listOf(
     SearchEntry("Night clock", "Opens the night clock", "night", "dim red screen bedside", Ic.Moon),
     SearchEntry("Theme", "Appearance and time", "display", "dark light match phone mode colour", Ic.Sun),
     SearchEntry("Time format", "Appearance and time", "display", "12-hour 24-hour clock", Ic.Sun),
-    SearchEntry("Export or import a backup", "Backup", "backup", "restore file save json", Ic.Backup),
+    SearchEntry("Export or import a backup", "Backup", "backup", "restore file save aura damaged", Ic.Backup),
+    SearchEntry("Weekend days", "Appearance and time", "display", "weekday weekend friday saturday sunday every label", Ic.Sun),
     SearchEntry("Privacy and version", "About", "about", "internet analytics ads frame meter", Ic.Info),
 )
 
@@ -255,7 +259,7 @@ private fun fmtAt(ms: Long, is24: Boolean): String {
 @Composable
 fun SetupTab(
     checks: List<Check>, pad: PaddingValues, now: Long, is24: Boolean, rev: Int, seen: MutableSet<Any>,
-    onFix: (Int) -> Unit, onRunFix: (String) -> Unit, onNight: () -> Unit, onChanged: () -> Unit, switchInfo: String = "", active: Boolean = true,
+    onFix: (Int) -> Unit, onRunFix: (String) -> Unit, onNight: () -> Unit, onChanged: () -> Unit, switchInfo: String = "", active: Boolean = true, onNotice: (String, String) -> Unit = { _, _ -> },
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -264,13 +268,13 @@ fun SetupTab(
     val vbtn = remember(rev, bump) { Settings.volumeButtons(ctx) }
     val tfmt = remember(rev, bump) { Settings.timeFormat(ctx) }
     val bed = remember(rev, bump) { Settings.bed(ctx) }
+    val wkMode = remember(rev, bump) { Settings.weekendMode(ctx) }
     val lastFired = remember(rev, bump) { Store.get(ctx, "lastFired") }
     val nextT = remember(rev, bump) { Store.get(ctx, "nextT").toLongOrNull() ?: 0L }
     val missed = remember(rev, bump) { Store.get(ctx, "missed") == "1" }
     val flat = rememberCanvasBackdrop { drawRect(Aura.Card) }
     val on = checks.count { it.ok }
     val all = on == checks.size && checks.isNotEmpty()
-    val tick by animateFloatAsState(if (all) 1f else 0f, tween(300), label = "allOn")
 
     var test by remember { mutableStateOf<List<Check>?>(null) }
     var testing by remember { mutableStateOf(false) }
@@ -291,15 +295,24 @@ fun SetupTab(
     var importText by remember { mutableStateOf<String?>(null) }
     var confirmRestore by remember { mutableStateOf(false) }
     val parsed = remember(importText) { importText?.let { Backup.parse(it) } }
-    val exportFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
-        if (uri != null) fileMsg = if (BackupFile.write(ctx, uri, BackupFile.text(ctx))) "Saved the backup file" to true else "Could not save the file" to false
+    val exportFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(BackupFile.MIME)) { uri: Uri? ->
+        if (uri != null) fileMsg = if (BackupFile.write(ctx, uri, BackupFile.bytes(ctx))) "Saved the backup file" to true else "Could not save the file" to false
     }
     val importFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
-            confirmRestore = false
-            val t = BackupFile.read(ctx, uri)
-            importText = t
-            fileMsg = if (t == null) "Could not read that file" to false else null
+            confirmRestore = false; importText = null; fileMsg = null
+            val bytes = BackupFile.read(ctx, uri)
+            val r = if (bytes == null) null else AuraFile.decode(bytes)
+            when {
+                r == null -> onNotice("Can't open that file", "Android would not let Aura read it, or it is far too big to be a backup. Your alarms were not touched.")
+                r is AuraFile.Read.Ok -> {
+                    if (Backup.parse(r.json) != null) importText = r.json
+                    else onNotice("Can't read this backup", "The file opens, but what is inside is not Aura Alarm data. Your alarms were not touched.")
+                }
+                r is AuraFile.Read.Damaged -> onNotice("This backup is damaged", "It looks cut short or changed, so Aura can't trust it. Your alarms were not touched.")
+                r is AuraFile.Read.Newer -> onNotice("Made by a newer Aura", "This backup was saved by a newer version of Aura Alarm. Update the app, then try again. Your alarms were not touched.")
+                else -> onNotice("Can't read this backup", "That file is not an Aura Alarm backup. Your alarms were not touched.")
+            }
         }
     }
 
@@ -334,13 +347,7 @@ fun SetupTab(
         when (shown) {
             // ---------------------------------------------------------------- the hub
             "" -> {
-                Row(Modifier.fillMaxWidth().padding(start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        BasicText("Setup", style = ts(26f, weight = FontWeight.ExtraBold))
-                        BasicText("$on of ${checks.size} protections on", style = ts(14f, if (all) Aura.Mint else Aura.Muted))
-                    }
-                    Icon(Ic.Check, Aura.Mint, Modifier.size(28.dp).graphicsLayer { alpha = tick; scaleX = .6f + .4f * tick; scaleY = .6f + .4f * tick })
-                }
+                BasicText("Setup", Modifier.padding(start = 4.dp), style = ts(26f, weight = FontWeight.ExtraBold))
                 SearchPill(query) { query = it }
                 val terms = query.trim().lowercase().split(" ").filter { it.isNotEmpty() }
                 if (terms.isNotEmpty()) {
@@ -352,13 +359,13 @@ fun SetupTab(
                     else Block(null) { hits.forEachIndexed { i, e -> NavRow(e.icon, e.title, e.where, Aura.Muted, i == 0) { openScreen(e.dest) } } }
                 } else {
                     Section(0, seen, "Reliability", "Make sure your alarms always ring") {
-                        NavRow(Ic.Shield, "Protection", if (all) "All on" else "${checks.count { !it.ok }} need attention", if (all) Aura.Mint else Aura.Rose, true) { openScreen("protection") }
+                        NavRow(Ic.Shield, "Protection", if (all) null else "${checks.count { !it.ok }} need attention", Aura.Rose, true) { openScreen("protection") }
                         NavRow(Ic.Play, "Test and status", if (lastFired.isEmpty()) "Not run yet" else fmtLast(lastFired, is24), Aura.Muted, false) { openScreen("test") }
                     }
                     Section(1, seen, "Alarms", "How they ring and when to rest") {
                         NavRow(Ic.Volume, "Sound and ringing", "$av%  \u00B7  " + RINGS[ro.coerceIn(0, 2)].first, Aura.Muted, true) { openScreen("sound") }
                         val nets = listOf(floorOn, missedOn, pastOn).count { it }
-                        NavRow(Ic.Alert, "Safety nets", if (nets == 3) "All on" else "$nets of 3 on", if (nets == 3) Aura.Mint else Aura.Muted, false) { openScreen("safety") }
+                        NavRow(Ic.Alert, "Safety nets", if (nets == 3) null else "$nets of 3 on", Aura.Muted, false) { openScreen("safety") }
                         NavRow(Ic.Sleep, "Bedtime", if (bed.on) "On" else "Off", Aura.Muted, false) { openScreen("bedtime") }
                         NavRow(Ic.Moon, "Night clock", null, Aura.Muted, false) { openScreen("night") }
                     }
@@ -372,7 +379,7 @@ fun SetupTab(
 
             // ---------------------------------------------------------------- protection: the checks and the fixes
             "protection" -> {
-                ScreenHeader("Protection", "$on of ${checks.size} on", { goBack() })
+                ScreenHeader("Protection", "What your phone has to allow for alarms to ring", { goBack() })
                 Block("Checks") {
                     checks.forEachIndexed { i, c ->
                         Row(Modifier.fillMaxWidth().then(if (i == 0) Modifier else Modifier.topHairline()).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -531,6 +538,17 @@ fun SetupTab(
                         Choice(n, null, themeMode == i, i == 0) { themeMode = i; Settings.setInt(ctx, "th", i); Aura.apply(i, sysDark) }
                     }
                 }
+                Block("Weekend") {
+                    BasicText("Used for labels like Every weekday and Every weekend.", Modifier.padding(bottom = 4.dp), style = ts(13f, Aura.Muted))
+                    listOf(
+                        "auto" to "Phone region (${Days.list(Weekend.auto)})",
+                        "56" to "Friday and Saturday",
+                        "06" to "Saturday and Sunday",
+                        "5" to "Friday only",
+                    ).forEachIndexed { i, (k, n) ->
+                        Choice(n, null, wkMode == k, i == 0) { Settings.setWeekendMode(ctx, k); bump++; onChanged() }
+                    }
+                }
                 Block("Time format") {
                     listOf(
                         "auto" to "Phone setting (${if (DateFormat.is24HourFormat(ctx)) "24" else "12"}-hour)",
@@ -547,14 +565,13 @@ fun SetupTab(
                 ScreenHeader("Backup", "Keep your alarms safe", { goBack() })
                 Block("Backup file") {
                     BasicText(
-                        "Everything in one file: alarms, cities, bedtime and settings. Keep a copy in Downloads or a cloud drive so a reset phone cannot take your alarms with it.",
+                        "Everything in one small .aura file: alarms, cities, bedtime and settings. Keep a copy in Downloads or a cloud drive so a reset phone cannot take your alarms with it. Older backups still open.",
                         Modifier.padding(bottom = 12.dp), style = ts(13f, Aura.Muted),
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         SoftButton("Export to file", { fileMsg = null; exportFile.launch(BackupFile.name(System.currentTimeMillis())) })
                         SoftButton("Import from file", { fileMsg = null; importFile.launch(arrayOf("*/*")) })
                     }
-                    if (importText != null && parsed == null) BasicText("That file is not an Aura Alarm backup.", Modifier.padding(top = 12.dp), style = ts(13f, Aura.Rose, FontWeight.Bold))
                     if (parsed != null) {
                         val n = parsed.alarms.size
                         BasicText("This backup has $n alarm" + (if (n == 1) "" else "s") + ". Restoring replaces the ones you have now.", Modifier.padding(top = 12.dp, bottom = 10.dp), style = ts(13f, Aura.Muted))

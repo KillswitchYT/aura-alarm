@@ -44,6 +44,10 @@ object Settings {
     /** 0 follows the phone, 1 dark, 2 light. */
     fun theme(c: Context) = int(c, "th", 0).coerceIn(0, 2)
 
+    /** Which days are the weekend for the day labels: "auto" (the phone's region) or day numbers like "56" for Friday and Saturday. */
+    fun weekendMode(c: Context): String = Store.get(c, "wkd").ifEmpty { "auto" }
+    fun setWeekendMode(c: Context, mode: String) { Store.set(c, "wkd", mode); Weekend.apply(mode) }
+
     /** Safety nets: switches that are on until the person turns them off. */
     private fun flag(c: Context, k: String) = int(c, k, 1) == 1
     fun setFlag(c: Context, k: String, on: Boolean) = setInt(c, k, if (on) 1 else 0)

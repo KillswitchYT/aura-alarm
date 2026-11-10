@@ -50,14 +50,8 @@ data class Alarm(
         return -1
     }
 
-    fun daysSummary(): String = when {
-        date.isNotEmpty() -> date
-        days.isEmpty() -> "Once"
-        days.size == 7 -> "Every day"
-        days == setOf(1, 2, 3, 4, 5) -> "Weekdays"
-        days == setOf(0, 6) -> "Weekends"
-        else -> days.sorted().joinToString(" ") { DAY_NAMES[it] }
-    }
+    /** When it repeats, in words: Every weekday, Every day except Fri and Sat, Sun to Tue. The weekend follows the phone's region. */
+    fun daysSummary(weekend: Set<Int> = Weekend.current): String = if (date.isNotEmpty()) date else Days.summary(days, weekend)
 
     fun toJson(): JSONObject = JSONObject()
         .put("t", time).put("l", label).put("on", if (on) 1 else 0)

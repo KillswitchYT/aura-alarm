@@ -25,7 +25,7 @@ fun main() {
     check("dated alarm in the past is -1", Alarm(time = "07:00", date = "2026-10-01").next(sat6) == -1L)
     check("dated alarm in the future", Alarm(time = "08:15", date = "2026-12-31").next(sat6) == at(2026, 12, 31, 8, 15))
     check("midnight from 23:59", Alarm(time = "00:00").next(at(2026, 10, 24, 23, 59)) == at(2026, 10, 25, 0, 0))
-    check("summaries", Alarm(days = setOf(1,2,3,4,5)).daysSummary() == "Weekdays" && Alarm().daysSummary() == "Once" && Alarm(days = setOf(0,6)).daysSummary() == "Weekends")
+    check("summaries", Alarm(days = setOf(1,2,3,4,5)).daysSummary(setOf(0, 6)) == "Every weekday" && Alarm().daysSummary(setOf(0, 6)) == "Once" && Alarm(days = setOf(0,6)).daysSummary(setOf(0, 6)) == "Every weekend")
 
     section("daylight saving (Egypt falls back at the end of Thursday 29 Oct 2026)")
     val cairoZ = ZoneId.of("Africa/Cairo")
@@ -232,7 +232,7 @@ fun main() {
     check("if we did not touch it, we do not restore it", Vol.restoreTo(5, -1, 9) == null && Vol.restoreTo(-1, 15, 15) == null && Vol.restoreTo(7, 7, 7) == null)
 
     section("backup files")
-    check("file name has the date", BackupFile.name(0L) == "aura-alarm-backup-1970-01-01.json" && BackupFile.name(0L).endsWith(".json"))
+    check("file name has the date and the .aura ending", BackupFile.name(0L) == "aura-backup-1970-01-01.aura" && BackupFile.name(0L).endsWith(".aura"))
     check("a file saved by an editor with a byte order mark still reads", Backup.parse("\uFEFF{\"al\":[]}")?.alarms?.isEmpty() == true)
     check("whitespace around the file does not matter", Backup.parse("\n  {\"al\":[]}  \n") != null)
     check("indented json reads the same as compact", Backup.parse(org.json.JSONObject(text).toString(2))!!.let { it.alarms == Backup.parse(text)!!.alarms })
@@ -388,6 +388,64 @@ fun main() {
     check("the note is for a real alarm nobody answered", Missed.shouldNotify(true, test = false, timer = false))
     check("not when it is switched off, a test, or a timer", !Missed.shouldNotify(false, false, false) && !Missed.shouldNotify(true, true, false) && !Missed.shouldNotify(true, false, true))
     check("the note names the alarm and the time", Missed.text("school", "6:45 AM") == "school rang at 6:45 AM and nobody answered it.")
+
+    section("slice C: day labels")
+    val egypt = setOf(5, 6); val west = setOf(0, 6)
+    fun lab(vararg d: Int, wk: Set<Int> = egypt) = Days.summary(d.toSet(), wk)
+    check("Sunday to Thursday in Egypt is Every weekday", lab(0, 1, 2, 3, 4) == "Every weekday")
+    check("Friday and Saturday in Egypt is Every weekend", lab(5, 6) == "Every weekend")
+    check("Monday to Friday where the weekend is Saturday and Sunday is Every weekday, and Sat and Sun is Every weekend", lab(1, 2, 3, 4, 5, wk = west) == "Every weekday" && lab(0, 6, wk = west) == "Every weekend")
+    check("the same days mean different things in different regions", lab(1, 2, 3, 4, 5, wk = egypt) == "Every day except Sun and Sat" && lab(0, 1, 2, 3, 4, wk = west) == "Every day except Fri and Sat")
+    check("every day, once, and one named day", lab(0, 1, 2, 3, 4, 5, 6) == "Every day" && lab() == "Once" && lab(1) == "Every Monday" && lab(6) == "Every Saturday")
+    check("six days is Every day except one", lab(0, 1, 2, 3, 4, 5) == "Every day except Sat" && lab(1, 2, 3, 4, 5, 6) == "Every day except Sun")
+    check("five days that are not the weekdays say what is missing", lab(0, 1, 2, 4, 5) == "Every day except Wed and Sat")
+    check("three or more in a row collapse to a range", lab(0, 1, 2) == "Sun to Tue" && lab(1, 2, 3, 4) == "Mon to Thu")
+    check("a range and a loose day read as and, and a longer list uses commas", lab(0, 1, 2, 4) == "Sun to Tue and Thu" && lab(0, 2, 4, 6) == "Sun, Tue, Thu, Sat")
+    check("days that are not in a row are named", lab(1, 3, 5) == "Mon, Wed, Fri" && lab(0, 1, 3, 4) == "Sun, Mon, Wed, Thu")
+    check("two days read as and", lab(0, 1) == "Sun and Mon" && lab(0, 3) == "Sun and Wed")
+    check("with no weekend known there is no weekday or weekend label", Days.summary(setOf(1, 2, 3, 4, 5), emptySet()) == "Every day except Sun and Sat")
+    check("a day that does not exist is ignored", Days.summary(setOf(9, -1), egypt) == "Once")
+    check("a dated alarm says its date", Alarm(date = "2026-12-05", days = setOf(1)).daysSummary(egypt) == "2026-12-05")
+    check("the phone's own weekend is a sane answer whatever the phone says", Weekend.current.isNotEmpty() && Weekend.current.size <= 3 && Weekend.current.all { it in 0..6 })
+    check("the backup country list: Egypt and Saudi Fri and Sat, the US and UK Sat and Sun, Iran Friday only", Weekend.fromCountry("EG") == setOf(5, 6) && Weekend.fromCountry("sa") == setOf(5, 6) && Weekend.fromCountry("US") == setOf(0, 6) && Weekend.fromCountry("") == setOf(0, 6) && Weekend.fromCountry("IR") == setOf(5))
+    check("a weekend chosen in Setup is read from digits, and junk means follow the phone", Weekend.parse("56") == setOf(5, 6) && Weekend.parse("06") == setOf(0, 6) && Weekend.parse("5") == setOf(5) && Weekend.parse("auto") == null && Weekend.parse("") == null && Weekend.parse("9") == null && Weekend.parse("0123") == null)
+    run {
+        Weekend.apply("56")
+        check("choosing Fri and Sat makes a Sunday to Thursday alarm Every weekday, everywhere", Alarm(days = setOf(0, 1, 2, 3, 4)).daysSummary() == "Every weekday" && Alarm(days = setOf(5, 6)).daysSummary() == "Every weekend")
+        Weekend.apply("06")
+        check("choosing Sat and Sun makes Monday to Friday Every weekday", Alarm(days = setOf(1, 2, 3, 4, 5)).daysSummary() == "Every weekday")
+        Weekend.apply("auto")
+        check("and auto goes back to the phone", Weekend.current == Weekend.auto)
+    }
+
+    section("slice C: the .aura file")
+    run {
+        val json = Backup.export(al, emptyList(), Bed(), "vol", av = 70)
+        val enc = AuraFile.encode(json)
+        check("it starts with the letters AURA and a version", enc.size > 9 && String(enc, 0, 4, Charsets.US_ASCII) == "AURA" && enc[4].toInt() == AuraFile.VERSION)
+        val back = AuraFile.decode(enc)
+        check("a backup comes back exactly as it went in", back is AuraFile.Read.Ok && back.json == json && !back.legacy)
+        check("and still restores to the same alarms", (back as AuraFile.Read.Ok).let { Backup.parse(it.json)!!.alarms == Backup.parse(json)!!.alarms })
+        val big = Backup.export(List(30) { Alarm(time = "07:%02d".format(it), label = "school day $it") }, emptyList(), Bed(), "vol")
+        check("it is smaller than the text it holds", AuraFile.encode(big).size < big.length / 2)
+        val hurt = enc.copyOf().also { it[enc.size - 12] = (it[enc.size - 12].toInt() xor 0x5A).toByte() }
+        check("one changed byte is caught as damaged", AuraFile.decode(hurt) is AuraFile.Read.Damaged)
+        check("a file cut short is damaged", AuraFile.decode(enc.copyOf(enc.size / 2)) is AuraFile.Read.Damaged && AuraFile.decode(enc.copyOf(6)) is AuraFile.Read.Damaged)
+        check("a wrong checksum is damaged", AuraFile.decode(enc.copyOf().also { it[6] = (it[6].toInt() xor 1).toByte() }) is AuraFile.Read.Damaged)
+        check("a newer version says so", AuraFile.decode(enc.copyOf().also { it[4] = 2 }) is AuraFile.Read.Newer)
+        check("the right letters with garbage after them are damaged, not crashed on", AuraFile.decode("AURA".toByteArray() + byteArrayOf(1, 0, 0, 0, 0, 9, 9, 9, 9, 9)) is AuraFile.Read.Damaged)
+        check("a file that unpacks to something huge is refused", AuraFile.decode(AuraFile.encode("x".repeat(3_000_000))) is AuraFile.Read.Damaged)
+    }
+    run {
+        val plain = """{"al":[{"t":"06:45","l":"school","on":1,"d":[0,1,2,3,4]}]}"""
+        val r = AuraFile.decode(plain.toByteArray())
+        check("plain JSON (older Aura exports and the web build) still opens", r is AuraFile.Read.Ok && r.legacy && Backup.parse(r.json)!!.alarms.size == 1)
+        check("with a byte order mark and blank space too", AuraFile.decode(("\uFEFF\n  " + plain).toByteArray()) is AuraFile.Read.Ok)
+        check("empty, text, and a picture are not backups", AuraFile.decode(ByteArray(0)) is AuraFile.Read.NotABackup && AuraFile.decode("hello".toByteArray()) is AuraFile.Read.NotABackup && AuraFile.decode(byteArrayOf(-1, -40, -1, -32, 0, 16)) is AuraFile.Read.NotABackup)
+        check("a brace that is not a backup gets through decoding but not parsing", (AuraFile.decode("{not json".toByteArray()) as AuraFile.Read.Ok).let { Backup.parse(it.json) == null })
+        val arabic = Backup.export(listOf(Alarm(time = "06:45", label = "\u0645\u062F\u0631\u0633\u0629")), emptyList(), Bed(), "vol")
+        check("labels in other scripts survive", Backup.parse((AuraFile.decode(AuraFile.encode(arabic)) as AuraFile.Read.Ok).json)!!.alarms[0].label == "\u0645\u062F\u0631\u0633\u0629")
+    }
 
     println("\n$total checks, ${total - bad} passed" + if (bad == 0) " - ALL PASSED" else ", $bad FAILED")
     if (bad != 0) System.exit(1)

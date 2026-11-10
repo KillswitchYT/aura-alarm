@@ -5,7 +5,7 @@ Tick a line only when you saw it work. Write down anything that did not. Phone o
 
 ## 0. Install
 - [ ] Install the APK over your current build, do not uninstall. Open it: your existing alarms are all still there.
-- [ ] Setup tab shows 7 of 7 protections on. If not, tap Fix on each and come back.
+- [ ] Setup, Protection: every check says On. If one says Fix, tap it and come back. (The Setup list itself only mentions Protection when something is wrong.)
 
 ## 1. The ring (the only thing that really matters)
 Use Setup, Test and status, Test alarm now, then the real thing below.
@@ -153,8 +153,22 @@ Use Setup, Test and status, Test alarm now, then the real thing below.
 
 ## 16. The one optimized app (3.1.34 onwards)
 Before this, three real alarms were tested on the optimized build on your phone: rings with the screen on, rings over the lock screen, and rings after a restart. All three rang. CI also ran the same alarms on an emulator.
-- [ ] UPDATE. Install AuraAlarm.apk over the app you have. It says "Update", not "Install" and not a signature error. Your alarms and settings are all still there. Open Setup: it still says 7 of 7 protections on (if it does not, tap Protection and press Fix on what is missing).
+- [ ] UPDATE. Install AuraAlarm.apk over the app you have. It says "Update", not "Install" and not a signature error. Your alarms and settings are all still there. Open Setup, Protection: every check says On (if one does not, press Fix on it).
 - [ ] Uninstall "Aura Alarm (fast)" so two alarm apps are never armed at once.
 - [ ] After the update, run ONE test alarm 3 minutes out, phone locked. It rings. (This is the same file that was tested, but it is a different package from the test copy, so the check is cheap insurance.)
 - [ ] Setup, Test and status, Test alarm now: rings, slide to dismiss works.
 - [ ] If anything crashes, tell me the time it happened. The crash trace can be decoded with the mapping.txt published with every build.
+
+## 17. Day labels, the .aura backup, the dialog (3.1.35 onwards)
+- [ ] DAY LABELS. Your school alarm (Sunday to Thursday) now says "Every weekday" on the Alarms list instead of listing five days. If it says "Every day except Fri and Sat" instead, Setup, Appearance and time, Weekend is on a region that is not Egypt: pick "Friday and Saturday".
+- [ ] Make an alarm for only Friday and Saturday: "Every weekend". Every day: "Every day". Only Monday: "Every Monday". Sun, Mon, Tue: "Sun to Tue". Mon, Wed, Fri: "Mon, Wed, Fri". Every day but Friday: "Every day except Fri".
+- [ ] In the alarm editor the label under the day circles changes live as you tap the circles.
+- [ ] Setup, Appearance and time, Weekend: switch between Friday and Saturday / Saturday and Sunday / Friday only / Phone region and watch the labels on the Alarms list change.
+- [ ] Searching the alarm list for "weekday" finds the alarm.
+- [ ] .AURA BACKUP. Setup, Backup, Export to file: the saved file is named like aura-backup-2026-11-10.aura (check in My Files that it ends in .aura, not .json or .bin) and is small (a few KB or less).
+- [ ] Import that .aura file back: it shows "This backup has N alarms", Restore works.
+- [ ] An OLD backup (the .json you saved before, or a web-build backup) still imports.
+- [ ] CAN'T READ: Import a picture, or any random file (a photo, a PDF). A glass dialog appears in the middle of the screen with the screen blurred behind it: "Can't read this backup", with an OK button. OK closes it, tapping outside closes it, the back gesture closes it. Your alarms are unchanged.
+- [ ] DAMAGED: copy an .aura file, open it in a hex or text editor app and change or delete a few characters in the middle, import it: the dialog says "This backup is damaged".
+- [ ] The dialog looks right in both light and dark mode.
+- [ ] SETUP LOOKS. The Setup list starts with just the word Setup: no "7 of 7 protections on", no green tick. Protection and Safety nets show a value only when something is off ("2 need attention").
