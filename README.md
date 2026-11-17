@@ -17,15 +17,19 @@ Apache-2.0 licence (third_party/). `ui/AuraApp.kt` shows the pattern: one `layer
 and glass pieces float above it and refract it. Lens refraction needs Android 13, blur needs Android 12.
 
 ## Build on GitHub (no PC needed)
-`.github/workflows/build.yml` builds on every push to main and on "Run workflow". There is ONE app, optimized with R8. The APK lands
-on the repo's Releases page as `AuraAlarm.apk` (plus `mapping.txt`, only for decoding crash traces), and a log of the build is pushed
-to the `build-logs` branch. Every build uses the fixed key in `app/debug.keystore` (the standard public "android" credentials), so each
-build installs over the last one, including over the earlier debug builds.
 
-After the build, a second job boots an Android emulator and runs `tools/ci/ring-test.sh` against that exact APK: it installs the
-previous debug build and updates over it, sets a real alarm and checks the MAIN alarm rings on time, and checks alarms survive a
-restart (simulated and real). The verdict is `ring-result.txt` on `build-logs`. An emulator is not a phone: this proves the ring
-starts and survives, not that you hear it or that Samsung leaves the app alone.
+`.github/workflows/build.yml` builds and tests pull requests, and builds `main` on every push or manual workflow run. The optimized
+APK is signed with a persistent private release key stored only in GitHub Actions secrets:
+`AURA_KEYSTORE_BASE64`, `AURA_KEYSTORE_PASSWORD`, `AURA_KEY_ALIAS`, and `AURA_KEY_PASSWORD`.
+
+If those secrets are not configured, CI generates a temporary key for the emulator test and deliberately does not publish a
+release. Once the private key is configured, the APK lands on the repo's Releases page as `AuraAlarm.apk` (plus `mapping.txt`,
+only for decoding crash traces). Build logs are pushed to the `build-logs` branch for non-PR runs.
+
+The emulator test installs the candidate APK cleanly, sets a real alarm, checks that the MAIN alarm rings on time, and checks
+that alarms survive a restart (simulated and real). It no longer claims to test an in-place update from the old public debug
+key: Android rejects updates signed by a different key. An emulator is not a Samsung or another OEM phone, so this verifies
+Android platform behavior, not each manufacturer's extra battery-management layer.
 
 ## Build loop (for an assistant with a sandbox)
 `tools/ci/cycle.sh "message"` pushes the project to KillswitchYT/aura-alarm, waits for the Actions build (about 3 minutes)
@@ -39,7 +43,7 @@ Needs JDK 17+ and the Android SDK (platform 37, build-tools 37.0.0). Set `sdk.di
     ./gradlew assembleRelease    # app/build/outputs/apk/release/app-release.apk (this is the app; assembleDebug still works for a local debug build)
 
 Toolchain mirrors the glass library: Gradle 9.7.1 (downloaded from GitHub), AGP 9.3.2, Kotlin 2.4.10, Compose 1.12.0,
-io.github.kyant0:backdrop 2.0.1. targetSdk stays at 34 on purpose.
+io.github.kyant0:backdrop 2.0.1. targetSdk is 36; compileSdk and Build Tools are 37.
 
 ## Engine (app/src/main/java/com/killswitch/aura)
 | File | What it does |
@@ -55,4 +59,23 @@ io.github.kyant0:backdrop 2.0.1. targetSdk stays at 34 on purpose.
 | ClockWidget, Intents, Screen | Home-screen widget, voice-assistant intents (alarm, timer), night-clock brightness. |
 
 ## Signing
-Debug builds use ~/.android/debug.keystore. Keep it: Android only updates an app in place when the signature matches.
+
+Release signing is deliberately separate from the debug key. Generate a private PKCS#12 keystore on a trusted device and keep
+the file out of Git:
+
+```bash
+keytool -genkeypair -v -storetype PKCS12 -keystore aura-release.p12 -alias aura-release -keyalg RSA -keysize 3072 -validity 10000
+```
+
+Add these repository Actions secrets:
+- `AURA_KEYSTORE_BASE64`: the one-line Base64 encoding of `aura-release.p12` (`base64 -w 0 aura-release.p12` on Termux/Linux).
+- `AURA_KEYSTORE_PASSWORD`: the keystore password.
+- `AURA_KEY_ALIAS`: `aura-release`.
+- `AURA_KEY_PASSWORD`: the key password.
+
+For a local signed build, set `AURA_KEYSTORE_PATH`, `AURA_KEYSTORE_PASSWORD`, `AURA_KEY_ALIAS`, and `AURA_KEY_PASSWORD`
+in the environment before running `./gradlew assembleRelease`. Never commit the keystore or its passwords.
+
+**Signing-key migration:** APKs signed with the new private key cannot update installations signed with the old public debug key.
+Those installations must be uninstalled before installing the new release, which removes app data unless it is backed up first.
+The old key is retained only in the immutable backup/history for rollback; it is no longer used for new release builds.

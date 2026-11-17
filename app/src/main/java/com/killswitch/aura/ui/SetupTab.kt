@@ -387,8 +387,22 @@ fun SetupTab(
                                 BasicText(c.title, style = ts(16f, weight = FontWeight.Bold))
                                 BasicText(c.hint, style = ts(13f, Aura.Muted))
                             }
-                            if (c.ok) BasicText("On", style = ts(15f, Aura.Mint, FontWeight.Bold))
-                            else Box(Modifier.pressable { onFix(i) }.padding(8.dp)) { BasicText("Fix", style = ts(15f, Aura.AccentText, FontWeight.ExtraBold)) }
+                            if (c.ok) {
+                                BasicText(
+                                    if (i == 3 && !Perms.isSamsungDevice()) "N/A" else "On",
+                                    style = ts(15f, Aura.Mint, FontWeight.Bold),
+                                )
+                            } else {
+                                val confirm = i == 3 && Perms.samsungConfirmationPending(ctx)
+                                Box(Modifier.pressable {
+                                    if (confirm) {
+                                        Perms.confirmSamsung(ctx)
+                                        onChanged()
+                                    } else onFix(i)
+                                }.padding(8.dp)) {
+                                    BasicText(if (confirm) "Confirm" else "Fix", style = ts(15f, Aura.AccentText, FontWeight.ExtraBold))
+                                }
+                            }
                         }
                     }
                 }

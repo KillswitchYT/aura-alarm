@@ -17,46 +17,85 @@ data class Check(val title: String, val hint: String, val ok: Boolean)
 data class Fix(val id: String, val title: String, val hint: String)
 
 object Perms {
-    private val TEXT = listOf(
-        "Exact alarms" to "\u201CAlarms & reminders\u201D access",
-        "Notifications" to "Needed for the alarm and warnings",
-        "Full-screen alarm" to "Ring over the lock screen",
-        "Never sleeping app" to "Samsung: exempt from sleeping apps",
-        "Battery: Unrestricted" to "Stops Android killing the alarm",
-        "Do Not Disturb" to "Allow alarms through",
-        "Sound check" to "Alarm volume ${Vol.MIN_PERCENT}% or more, Bluetooth off",
-    )
+    private const val SAMSUNG_CONFIRMED = "samsungNeverSleepingConfirmed"
+    private const val SAMSUNG_PENDING = "samsungNeverSleepingPending"
 
     val FIXES = listOf(
         Fix("rf", "Re-arm all alarms", "Reschedule every alarm and backup"),
         Fix("lk", "Check exact-alarm access", "Verify Alarms & reminders"),
-        Fix("ph", "Open Samsung sleeping apps", "Jump to Never sleeping apps"),
+        Fix("ph", "Open app battery settings", "Review manufacturer-specific background restrictions"),
         Fix("vo", "Raise alarm volume", "Set it to a loud level, or open Bluetooth if that is the problem"),
     )
 
-    /** Order matches the Setup tab: 0 exact alarms, 1 notifications, 2 full-screen, 3 samsung (manual), 4 battery, 5 DND, 6 sound. */
+    /** Samsung's extra sleeping-app list is not present on other Android manufacturers. */
+    fun isSamsungDevice(): Boolean =
+        Build.MANUFACTURER.equals("samsung", ignoreCase = true) ||
+            Build.BRAND.equals("samsung", ignoreCase = true)
+
+    /** True only after the user explicitly confirms the Samsung setting; opening Settings is not confirmation. */
+    fun samsungConfirmationPending(c: Context): Boolean =
+        isSamsungDevice() && Store.get(c, SAMSUNG_PENDING) == "1"
+
+    fun confirmSamsung(c: Context) {
+        if (!isSamsungDevice() || !samsungConfirmationPending(c)) return
+        Store.set(c, SAMSUNG_CONFIRMED, "1")
+        Store.set(c, SAMSUNG_PENDING, "0")
+    }
+
+    /** Order matches the Setup tab: exact alarms, notifications, full-screen, Samsung-only, battery, DND, sound. */
     fun check(c: Context): List<Check> {
         val nm = c.getSystemService(NotificationManager::class.java)
         val au = c.getSystemService(AudioManager::class.java)
-        val ok = listOf(
-            Scheduler.canExact(c),
-            nm.areNotificationsEnabled(),
-            Build.VERSION.SDK_INT < 34 || nm.canUseFullScreenIntent(),
-            Store.get(c, "samsungOk") == "1",
-            c.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(c.packageName),
-            nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_NONE,
-            Vol.ok(com.killswitch.aura.Settings.alarmPercent(c)) && !btOut(au),
+        val samsung = isSamsungDevice()
+        return listOf(
+            Check("Exact alarms", "“Alarms & reminders” access", Scheduler.canExact(c)),
+            Check("Notifications", "Needed for the alarm and warnings", nm.areNotificationsEnabled()),
+            Check("Full-screen alarm", "Ring over the lock screen", Build.VERSION.SDK_INT < 34 || nm.canUseFullScreenIntent()),
+            Check(
+                if (samsung) "Samsung: Never sleeping apps" else "Manufacturer battery settings",
+                if (samsung) "Manual check: add Aura to Never sleeping apps, return here, then confirm."
+                else "No Samsung-only list applies. If alarms are delayed, allow background activity in app info; menu names vary by manufacturer.",
+                !samsung || Store.get(c, SAMSUNG_CONFIRMED) == "1",
+            ),
+            Check(
+                "Battery: Unrestricted",
+                "Stops Android applying standard battery optimization to Aura",
+                c.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(c.packageName),
+            ),
+            Check(
+                "Do Not Disturb",
+                "Allow alarms through",
+                nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_NONE,
+            ),
+            Check(
+                "Sound check",
+                "Alarm volume ${Vol.MIN_PERCENT}% or more, Bluetooth off",
+                Vol.ok(com.killswitch.aura.Settings.alarmPercent(c)) && !btOut(au),
+            ),
         )
-        return TEXT.mapIndexed { i, t -> Check(t.first, t.second, ok[i]) }
     }
 
     private fun btOut(au: AudioManager): Boolean = au.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any {
-        it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == 26 || it.type == 27 // 26/27 = BLE headset and speaker
+        it.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP || it.type == 26 || it.type == 27
     }
 
     private fun go(a: Activity, i: Intent) {
-        try { a.startActivity(i) } catch (e: Exception) {
-            try { a.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${a.packageName}"))) } catch (e2: Exception) { }
+        try {
+            a.startActivity(i)
+        } catch (e: Exception) {
+            openAppBatterySettings(a)
+        }
+    }
+
+    private fun openAppBatterySettings(a: Activity) {
+        goAppDetails(a)
+    }
+
+    private fun goAppDetails(a: Activity) {
+        try {
+            a.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${a.packageName}")))
+        } catch (e: Exception) {
+            try { a.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) } catch (ignored: Exception) { }
         }
     }
 
@@ -74,7 +113,6 @@ object Perms {
             4 -> go(a, Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pk))
             5 -> go(a, Intent("android.settings.ZEN_MODE_SETTINGS"))
             else -> {
-                // The alarm volume lives in the app now. Bluetooth has to be dealt with by hand.
                 val au = a.getSystemService(AudioManager::class.java)
                 if (btOut(au)) go(a, Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
                 else com.killswitch.aura.Settings.setInt(a, "av", Vol.RECOMMENDED)
@@ -92,18 +130,31 @@ object Perms {
         }
     }
 
-    /** Android has no public API to read Samsung's "Never sleeping apps" list, so this one is confirmed by hand. */
+    /**
+     * Samsung does not expose its "Never sleeping apps" list through a public API.
+     * Opening its settings never marks the check complete; the user must confirm after returning.
+     */
     fun samsung(a: Activity) {
-        if (Store.get(a, "samsungOk") == "1") { Store.set(a, "samsungOk", "0"); return }
-        Store.set(a, "samsungOk", "1")
+        if (!isSamsungDevice()) {
+            openAppBatterySettings(a)
+            return
+        }
+
+        Store.set(a, SAMSUNG_PENDING, "1")
         val screens = listOf(
             "com.samsung.android.lool" to "com.samsung.android.sm.battery.ui.BatteryActivity",
             "com.samsung.android.lool" to "com.samsung.android.sm.ui.battery.BatteryActivity",
             "com.samsung.android.sm_cn" to "com.samsung.android.sm.ui.battery.BatteryActivity",
         )
         for ((p, cls) in screens) {
-            try { a.startActivity(Intent().setClassName(p, cls)); return } catch (e: Exception) { }
+            try {
+                val intent = Intent().setClassName(p, cls)
+                if (intent.resolveActivity(a.packageManager) != null) {
+                    a.startActivity(intent)
+                    return
+                }
+            } catch (e: Exception) { }
         }
-        go(a, Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        openAppBatterySettings(a)
     }
 }

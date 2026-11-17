@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+  pull_request:
 
 permissions:
   contents: write
@@ -43,6 +44,38 @@ jobs:
             echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           } 2>&1 | tee sdk.log
 
+      # Release signing is loaded from Actions secrets. A throwaway key is used only for PR/CI tests.
+      # No private signing material is written into the repository or printed to the logs.
+      - name: Configure release signing
+        env:
+          AURA_KEYSTORE_BASE64: ${{ secrets.AURA_KEYSTORE_BASE64 }}
+          AURA_KEYSTORE_PASSWORD: ${{ secrets.AURA_KEYSTORE_PASSWORD }}
+          AURA_KEY_ALIAS: ${{ secrets.AURA_KEY_ALIAS }}
+          AURA_KEY_PASSWORD: ${{ secrets.AURA_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -n "${AURA_KEYSTORE_BASE64:-}" ] && [ -n "${AURA_KEYSTORE_PASSWORD:-}" ] && [ -n "${AURA_KEY_ALIAS:-}" ] && [ -n "${AURA_KEY_PASSWORD:-}" ]; then
+            printf '%s' "$AURA_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/aura-release.p12"
+            echo "AURA_KEYSTORE_PATH=$RUNNER_TEMP/aura-release.p12" >> "$GITHUB_ENV"
+            echo "HAS_PRIVATE_RELEASE_KEY=true" >> "$GITHUB_ENV"
+            echo "Private release signing is configured."
+            echo "AURA_KEYSTORE_PASSWORD=$AURA_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "AURA_KEY_ALIAS=$AURA_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "AURA_KEY_PASSWORD=$AURA_KEY_PASSWORD" >> "$GITHUB_ENV"
+          else
+            CI_PASS=$(openssl rand -hex 24)
+            echo "::add-mask::$CI_PASS"
+            keytool -genkeypair -noprompt -storetype PKCS12 -keystore "$RUNNER_TEMP/aura-ci-only.p12" \
+              -storepass "$CI_PASS" -keypass "$CI_PASS" -alias aura-ci-only -keyalg RSA -keysize 3072 \
+              -validity 3650 -dname "CN=Aura CI, OU=Build, O=Aura, L=Unknown, ST=Unknown, C=US"
+            echo "AURA_KEYSTORE_PATH=$RUNNER_TEMP/aura-ci-only.p12" >> "$GITHUB_ENV"
+            echo "AURA_KEYSTORE_PASSWORD=$CI_PASS" >> "$GITHUB_ENV"
+            echo "AURA_KEY_ALIAS=aura-ci-only" >> "$GITHUB_ENV"
+            echo "AURA_KEY_PASSWORD=$CI_PASS" >> "$GITHUB_ENV"
+            echo "HAS_PRIVATE_RELEASE_KEY=false" >> "$GITHUB_ENV"
+            echo "No persistent release key configured; using an ephemeral CI-only key. No APK release will be published."
+          fi
+
       # Works whether the repo holds the project itself or just AuraAlarm-native-source.zip.
       - name: Find the project
         id: p
@@ -55,7 +88,7 @@ jobs:
           echo "gradlew found at: $g"
           echo "dir=$(dirname "$g")" >> "$GITHUB_OUTPUT"
 
-      # The optimized (R8) build is the app: one APK, signed with the fixed project key, so it installs over the debug build before it.
+      # The optimized (R8) build is signed with the persistent private key, or a throwaway CI key for tests.
       - name: Build the app (optimized)
         working-directory: ${{ steps.p.outputs.dir }}
         run: |
@@ -73,7 +106,7 @@ jobs:
 
       # The APK as a release: on a phone, open the repo's Releases page and tap AuraAlarm.apk. mapping.txt is only for decoding crash traces.
       - name: Publish the APK as a release
-        if: success()
+        if: ${{ success() && env.HAS_PRIVATE_RELEASE_KEY == 'true' && github.event_name != 'pull_request' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -84,7 +117,7 @@ jobs:
           if [ -f "$m" ]; then cp "$m" mapping.txt; files="$files mapping.txt"; fi
           gh release delete latest --cleanup-tag -y --repo "${{ github.repository }}" 2>/dev/null || true
           gh release create latest $files --repo "${{ github.repository }}" --target "$GITHUB_SHA" --prerelease \
-            --title "Latest build" --notes "Built from commit ${GITHUB_SHA::7}. Optimized, signed with the fixed project key, so it updates over the previous build."
+            --title "Latest build" --notes "Built from commit ${GITHUB_SHA::7}. Optimized and signed with Aura's private release key."
 
       - name: Show errors on the run page
         if: always()
@@ -110,7 +143,7 @@ jobs:
 
       # Lets an assistant read the result without downloading a zip: branch build-logs holds errors.txt and the full logs.
       - name: Publish the logs to branch build-logs
-        if: always()
+        if: ${{ always() && github.event_name != 'pull_request' }}
         run: |
           d="${{ steps.p.outputs.dir }}"
           mkdir -p /tmp/out
@@ -133,7 +166,6 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -141,13 +173,6 @@ jobs:
         with:
           name: aura-apk
           path: apk
-
-      # The build you have installed now, to test the update you will do: this one installed over it, keeping its alarms.
-      - name: Fetch the previous debug build for the update test
-        run: |
-          mkdir -p old
-          curl -sSL --fail -o old/previous.apk "https://raw.githubusercontent.com/${{ github.repository }}/backup-3.1.33/backup/app-debug-3.1.33.apk"
-          ls -l old/previous.apk
 
       # Lets the emulator use the machine's hardware acceleration.
       - name: Enable KVM
@@ -159,12 +184,12 @@ jobs:
       - name: Ring test on an emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 36
           target: google_apis
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: timeout 1500 bash tools/ci/ring-test.sh apk/app-release.apk com.killswitch.aura old/previous.apk
+          script: timeout 1500 bash tools/ci/ring-test.sh apk/app-release.apk com.killswitch.aura
 
       - name: Show the result on the run page
         if: always()
@@ -177,7 +202,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish the ring test to branch build-logs
-        if: always()
+        if: ${{ always() && github.event_name != 'pull_request' }}
         run: |
           mkdir -p /tmp/rt && cd /tmp/rt
           URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"

@@ -147,6 +147,17 @@ phase_reboot() {
   fi
 
   log "now a real restart, with time limits"
+  # The simulated test force-stops the package to wipe pending alarms. Explicitly launch it again before
+  # the real reboot: Android intentionally suppresses BOOT_COMPLETED for force-stopped packages.
+  adbx am start -n "$PKG/com.killswitch.aura.MainActivity" > /dev/null
+  sleep 3
+  read -r th tm lead < <(plan_time 3)
+  log "setting a fresh alarm for $th:$(printf %02d "$tm") before the real reboot"
+  set_alarm "$th" "$tm" "realreboottest"
+  n=$(wait_armed)
+  if [ "$n" -lt 1 ]; then note "RESTART(real): FAIL the app did not arm the alarm before the real reboot"; diagnostics; return 1; fi
+  adbx input keyevent KEYCODE_HOME > /dev/null
+  sleep 2
   up0=$(adbx cat /proc/uptime | cut -d. -f1)
   adb reboot
   # first wait until the phone really goes away, so "still there" cannot be mistaken for "came back"

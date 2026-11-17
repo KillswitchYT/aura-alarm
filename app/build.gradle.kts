@@ -3,6 +3,14 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val releaseStorePath = System.getenv("AURA_KEYSTORE_PATH")
+val releaseStorePassword = System.getenv("AURA_KEYSTORE_PASSWORD")
+val releaseKeyAlias = System.getenv("AURA_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("AURA_KEY_PASSWORD")
+val hasPrivateReleaseSigning = listOf(
+    releaseStorePath, releaseStorePassword, releaseKeyAlias, releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.killswitch.aura"
     compileSdk = 37
@@ -11,7 +19,7 @@ android {
     defaultConfig {
         applicationId = "com.killswitch.aura"
         minSdk = 26
-        targetSdk = 34 // kept low on purpose: raising it changes alarm and foreground-service rules, test that separately
+        targetSdk = 36
         // CI numbers every build; a local build falls back to 100, which still beats the old 6.
         val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
         versionCode = 100 + (run ?: 0)
@@ -19,24 +27,26 @@ android {
         manifestPlaceholders["appLabel"] = "Aura Alarm"
     }
 
+    // Create the signing config before buildTypes resolve it.
+    signingConfigs {
+        if (hasPrivateReleaseSigning) {
+            create("privateRelease") {
+                storeFile = file(releaseStorePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
-        // The app you install is this one: optimized with R8 (a debug build runs cold, unoptimized code and feels slower).
-        // Same package and the same fixed key as the debug builds before it, so it installs over them and keeps their alarms.
+        // Release APKs use the private key supplied through environment variables / GitHub Actions secrets.
+        // Without it, local assembleRelease output is unsigned and must not be distributed.
         release {
             isMinifyEnabled = true
             isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")
-        }
-    }
-
-    signingConfigs {
-        getByName("debug") {
-            // A fixed, public debug key (the standard "android" credentials) so every build is signed the same and installs over the last one.
-            storeFile = file("debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            signingConfig = if (hasPrivateReleaseSigning) signingConfigs.getByName("privateRelease") else null
         }
     }
 
