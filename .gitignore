@@ -3,5 +3,8 @@ build/
 local.properties
 *.apk
 *.keystore
+*.jks
+*.p12
+*.pfx
+*.key
 .idea/
-!app/debug.keystore
