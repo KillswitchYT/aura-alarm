@@ -54,7 +54,7 @@ object Perms {
             Check(
                 if (samsung) "Samsung: Never sleeping apps" else "Manufacturer battery settings",
                 if (samsung) "Manual check: add Aura to Never sleeping apps, return here, then confirm."
-                else "No Samsung-only check applies. Use app battery settings if this phone delays alarms.",
+                else "No Samsung-only list applies. If alarms are delayed, allow background activity in app info; menu names vary by manufacturer.",
                 !samsung || Store.get(c, SAMSUNG_CONFIRMED) == "1",
             ),
             Check(
