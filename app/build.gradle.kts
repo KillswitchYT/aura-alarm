@@ -27,17 +27,7 @@ android {
         manifestPlaceholders["appLabel"] = "Aura Alarm"
     }
 
-    buildTypes {
-        // Release APKs use the private key supplied through environment variables / GitHub Actions secrets.
-        // Without it, local assembleRelease output is unsigned and must not be distributed.
-        release {
-            isMinifyEnabled = true
-            isShrinkResources = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = if (hasPrivateReleaseSigning) signingConfigs.getByName("privateRelease") else null
-        }
-    }
-
+    // Create the signing config before buildTypes resolve it.
     signingConfigs {
         if (hasPrivateReleaseSigning) {
             create("privateRelease") {
@@ -46,6 +36,17 @@ android {
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword
             }
+        }
+    }
+
+    buildTypes {
+        // Release APKs use the private key supplied through environment variables / GitHub Actions secrets.
+        // Without it, local assembleRelease output is unsigned and must not be distributed.
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = if (hasPrivateReleaseSigning) signingConfigs.getByName("privateRelease") else null
         }
     }
 
