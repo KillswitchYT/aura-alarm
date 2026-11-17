@@ -17,15 +17,19 @@ Apache-2.0 licence (third_party/). `ui/AuraApp.kt` shows the pattern: one `layer
 and glass pieces float above it and refract it. Lens refraction needs Android 13, blur needs Android 12.
 
 ## Build on GitHub (no PC needed)
-`.github/workflows/build.yml` builds on every push to main and on "Run workflow". There is ONE app, optimized with R8. The APK lands
-on the repo's Releases page as `AuraAlarm.apk` (plus `mapping.txt`, only for decoding crash traces), and a log of the build is pushed
-to the `build-logs` branch. Every build uses the fixed key in `app/debug.keystore` (the standard public "android" credentials), so each
-build installs over the last one, including over the earlier debug builds.
 
-After the build, a second job boots an Android emulator and runs `tools/ci/ring-test.sh` against that exact APK: it installs the
-previous debug build and updates over it, sets a real alarm and checks the MAIN alarm rings on time, and checks alarms survive a
-restart (simulated and real). The verdict is `ring-result.txt` on `build-logs`. An emulator is not a phone: this proves the ring
-starts and survives, not that you hear it or that Samsung leaves the app alone.
+`.github/workflows/build.yml` builds and tests pull requests, and builds `main` on every push or manual workflow run. The optimized
+APK is signed with a persistent private release key stored only in GitHub Actions secrets:
+`AURA_KEYSTORE_BASE64`, `AURA_KEYSTORE_PASSWORD`, `AURA_KEY_ALIAS`, and `AURA_KEY_PASSWORD`.
+
+If those secrets are not configured, CI generates a temporary key for the emulator test and deliberately does not publish a
+release. Once the private key is configured, the APK lands on the repo's Releases page as `AuraAlarm.apk` (plus `mapping.txt`,
+only for decoding crash traces). Build logs are pushed to the `build-logs` branch for non-PR runs.
+
+The emulator test installs the candidate APK cleanly, sets a real alarm, checks that the MAIN alarm rings on time, and checks
+that alarms survive a restart (simulated and real). It no longer claims to test an in-place update from the old public debug
+key: Android rejects updates signed by a different key. An emulator is not a Samsung or another OEM phone, so this verifies
+Android platform behavior, not each manufacturer's extra battery-management layer.
 
 ## Build loop (for an assistant with a sandbox)
 `tools/ci/cycle.sh "message"` pushes the project to KillswitchYT/aura-alarm, waits for the Actions build (about 3 minutes)
