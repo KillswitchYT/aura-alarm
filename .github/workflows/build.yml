@@ -64,6 +64,7 @@ jobs:
             echo "AURA_KEY_PASSWORD=$AURA_KEY_PASSWORD" >> "$GITHUB_ENV"
           else
             CI_PASS=$(openssl rand -hex 24)
+            echo "::add-mask::$CI_PASS"
             keytool -genkeypair -noprompt -storetype PKCS12 -keystore "$RUNNER_TEMP/aura-ci-only.p12" \
               -storepass "$CI_PASS" -keypass "$CI_PASS" -alias aura-ci-only -keyalg RSA -keysize 3072 \
               -validity 3650 -dname "CN=Aura CI, OU=Build, O=Aura, L=Unknown, ST=Unknown, C=US"
