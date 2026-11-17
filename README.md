@@ -39,7 +39,7 @@ Needs JDK 17+ and the Android SDK (platform 37, build-tools 37.0.0). Set `sdk.di
     ./gradlew assembleRelease    # app/build/outputs/apk/release/app-release.apk (this is the app; assembleDebug still works for a local debug build)
 
 Toolchain mirrors the glass library: Gradle 9.7.1 (downloaded from GitHub), AGP 9.3.2, Kotlin 2.4.10, Compose 1.12.0,
-io.github.kyant0:backdrop 2.0.1. targetSdk stays at 34 on purpose.
+io.github.kyant0:backdrop 2.0.1. targetSdk is 36; compileSdk and Build Tools are 37.
 
 ## Engine (app/src/main/java/com/killswitch/aura)
 | File | What it does |
@@ -55,4 +55,23 @@ io.github.kyant0:backdrop 2.0.1. targetSdk stays at 34 on purpose.
 | ClockWidget, Intents, Screen | Home-screen widget, voice-assistant intents (alarm, timer), night-clock brightness. |
 
 ## Signing
-Debug builds use ~/.android/debug.keystore. Keep it: Android only updates an app in place when the signature matches.
+
+Release signing is deliberately separate from the debug key. Generate a private PKCS#12 keystore on a trusted device and keep
+the file out of Git:
+
+```bash
+keytool -genkeypair -v -storetype PKCS12 -keystore aura-release.p12 -alias aura-release -keyalg RSA -keysize 3072 -validity 10000
+```
+
+Add these repository Actions secrets:
+- `AURA_KEYSTORE_BASE64`: the one-line Base64 encoding of `aura-release.p12` (`base64 -w 0 aura-release.p12` on Termux/Linux).
+- `AURA_KEYSTORE_PASSWORD`: the keystore password.
+- `AURA_KEY_ALIAS`: `aura-release`.
+- `AURA_KEY_PASSWORD`: the key password.
+
+For a local signed build, set `AURA_KEYSTORE_PATH`, `AURA_KEYSTORE_PASSWORD`, `AURA_KEY_ALIAS`, and `AURA_KEY_PASSWORD`
+in the environment before running `./gradlew assembleRelease`. Never commit the keystore or its passwords.
+
+**Signing-key migration:** APKs signed with the new private key cannot update installations signed with the old public debug key.
+Those installations must be uninstalled before installing the new release, which removes app data unless it is backed up first.
+The old key is retained only in the immutable backup/history for rollback; it is no longer used for new release builds.
